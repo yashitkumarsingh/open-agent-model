@@ -51,3 +51,31 @@ oam risk -i agentmodel.yaml --fail-on high
 # Export complete HTML dashboard and OPA policy recommendations
 oam report -i agentmodel.yaml -d reports/
 ```
+
+---
+
+## CI/CD Integration Gate
+
+OpenAgentModel is designed to enforce security gates automatically inside pull requests. You can see our active workflow configuration in [.github/workflows/agent-governance.yml](.github/workflows/agent-governance.yml).
+
+To integrate the risk scanner check into your own repository's workflow:
+
+```yaml
+name: Agent Governance Gate
+on: [pull_request]
+
+jobs:
+  validate-agents:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g open-agent-model
+      - name: Validate Model Integrity
+        run: oam validate -i agentmodel.yaml
+      - name: Enforce Security Threshold
+        run: oam risk -i agentmodel.yaml --fail-on high --sarif agent-risks.sarif
+```
+

@@ -5,16 +5,15 @@ import { runRiskChecks } from '../risk-engine/rules.js';
 import { generateSvgDiagram } from './diagram.js';
 import { generatePolicyRecommendationsMd } from '../report/policy-template.js';
 import { generateHtmlReport } from '../report/html-template.js';
-import { SystemModel, Agent, Tool, McpServer } from '../core/model.js';
 import { generateSarifReport } from '../report/sarif-builder.js';
 import { generateOtelSchema } from '../report/otel-exporter.js';
 
-export function reportCommand(options: { input: string; dir: string }) {
+export function reportCommand(options: { input: string; dir: string; asOf?: string }) {
   const inputPath = path.resolve(options.input);
   const outputDir = path.resolve(options.dir);
 
   // Validate first
-  const validation = validateYaml(inputPath);
+  const validation = validateYaml(inputPath, { asOf: options.asOf });
   if (!validation.valid) {
     console.error(`\x1b[31mError validating agent model before generating report:\x1b[0m`);
     validation.errors?.forEach((err) => console.error(`  - ${err}`));
@@ -49,25 +48,40 @@ export function reportCommand(options: { input: string; dir: string }) {
       medium: findings.filter(f => f.severity === 'medium').length,
       low: findings.filter(f => f.severity === 'low').length,
     },
-    agents: (data.agents || []).map((a: Agent) => ({
+    models: data.models || [],
+    identities: data.identities || [],
+    data_classes: data.data_classes || [],
+    policies: data.policies || [],
+    agents: (data.agents || []).map((a) => ({
       id: a.id,
       purpose: a.purpose,
+      model: a.model,
       framework: a.framework,
       autonomy: a.autonomy,
       memory: a.memory,
-      allowedTools: a.allowed_tools,
-      delegates: a.allowed_delegates,
+      allowed_tools: a.allowed_tools,
+      denied_tools: a.denied_tools,
+      approval_required_for: a.approval_required_for,
+      allowed_delegates: a.allowed_delegates,
+      retry_policy: a.retry_policy,
+      spend_limit: a.spend_limit,
     })),
-    tools: (data.tools || []).map((t: Tool) => ({
+    tools: (data.tools || []).map((t) => ({
       id: t.id,
       type: t.type,
+      description: t.description,
       risk: t.risk,
-      requiresHumanApproval: t.requires_human_approval,
-      dataClasses: t.data_classes,
+      side_effect: t.side_effect,
+      auth_identity: t.auth_identity,
+      required_scopes: t.required_scopes,
+      requires_human_approval: t.requires_human_approval,
+      approval: t.approval,
+      rate_limit: t.rate_limit,
+      data_classes: t.data_classes,
     })),
-    mcpServers: (data.mcp_servers || []).map((m: McpServer) => ({
+    mcp_servers: (data.mcp_servers || []).map((m) => ({
       id: m.id,
-      trustLevel: m.trust_level,
+      trust_level: m.trust_level,
       exposes: m.exposes,
     }))
   };

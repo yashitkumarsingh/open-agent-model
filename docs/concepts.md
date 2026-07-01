@@ -18,7 +18,7 @@ graph TD
   C -->|Passed| E[Strong AST]
   E -->|oam risk| F[Static Rules and Experimental Policy Checks]
   E -->|oam diagram| G[Custom SVG Renderer]
-  F -->|Policy-as-Code| H[Generate OPA Rego / AGT Configs]
+  F -->|Policy-as-Code| H[Generate Rego-style / AGT Examples]
   F -->|Static Scan| I[Export SARIF Logs to CI]
   F -->|HTML Dashboard| J[Interactive Governance Report]
   G --> J

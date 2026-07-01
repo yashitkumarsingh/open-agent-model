@@ -137,7 +137,7 @@ const a2aPrivilegeEscalationRule: Rule = {
         delegateTools.forEach((toolId: string) => {
           if (!agentTools.has(toolId)) {
             const tool = toolMap.get(toolId);
-            if (tool && (tool.risk === 'high' || tool.risk === 'critical' || tool.type === 'payment_api' || hasHumanApproval(delegate, tool, toolId))) {
+            if (tool && (tool.risk === 'high' || isHighImpactTool(tool) || isSideEffectingTool(tool))) {
               findings.push({
                 id: 'R-001-ESC',
                 title: 'A2A Privilege Escalation Path Detected',

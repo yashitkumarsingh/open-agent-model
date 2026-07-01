@@ -1,7 +1,12 @@
 import { DeclarativePolicy, SystemModel } from './model.js';
 
-export function linkAndValidateSystemModel(data: SystemModel): string[] {
+export interface LinkerValidationOptions {
+  now?: Date;
+}
+
+export function linkAndValidateSystemModel(data: SystemModel, options: LinkerValidationOptions = {}): string[] {
   const errors: string[] = [];
+  const nowMs = options.now?.getTime() ?? Date.now();
 
   const agents = data.agents || [];
   const tools = data.tools || [];
@@ -148,7 +153,7 @@ export function linkAndValidateSystemModel(data: SystemModel): string[] {
       const expiryMs = Date.parse(identity.expires_at);
       if (Number.isNaN(expiryMs)) {
         errors.push(`Semantic Error: Identity '${identity.id}' has expires_at '${identity.expires_at}' which is not a valid date-time string.`);
-      } else if (expiryMs <= Date.now()) {
+      } else if (expiryMs <= nowMs) {
         errors.push(`Semantic Error: Identity '${identity.id}' has expired credentials at '${identity.expires_at}'.`);
       }
     }

@@ -13,11 +13,11 @@ const SEVERITY_COLORS = {
   low: '\x1b[34m[LOW]\x1b[0m'
 };
 
-export function riskCommand(options: { input: string; failOn: string; sarif?: string }) {
+export function riskCommand(options: { input: string; failOn: string; sarif?: string; asOf?: string }) {
   const inputPath = path.resolve(options.input);
   
   // Validate first
-  const validation = validateYaml(inputPath);
+  const validation = validateYaml(inputPath, { asOf: options.asOf });
   if (!validation.valid) {
     console.error(`\x1b[31mError validating agent model before risk check:\x1b[0m`);
     validation.errors?.forEach((err) => console.error(`  - ${err}`));

@@ -13,8 +13,28 @@ const addFormats = (addFormatsModule as any).default || addFormatsModule;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export interface ValidateYamlOptions {
+  asOf?: string;
+}
+
+function parseAsOfDate(asOf?: string): Date | undefined {
+  if (!asOf) return undefined;
+  const parsed = new Date(asOf);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid --as-of value '${asOf}'. Use YYYY-MM-DD or an ISO date-time string.`);
+  }
+  return parsed;
+}
+
 // Helper to load and validate YAML content against the schema
-export function validateYaml(filePath: string): { valid: boolean; errors?: string[]; data?: SystemModel } {
+export function validateYaml(filePath: string, options: ValidateYamlOptions = {}): { valid: boolean; errors?: string[]; data?: SystemModel } {
+  let now: Date | undefined;
+  try {
+    now = parseAsOfDate(options.asOf);
+  } catch (error: any) {
+    return { valid: false, errors: [error?.message || String(error)] };
+  }
+
   if (!fs.existsSync(filePath)) {
     return { valid: false, errors: [`File not found: ${filePath}`] };
   }
@@ -61,7 +81,7 @@ export function validateYaml(filePath: string): { valid: boolean; errors?: strin
   }
 
   // Run referential / semantic validation
-  const linkerErrors = linkAndValidateSystemModel(data);
+  const linkerErrors = linkAndValidateSystemModel(data, { now });
   if (linkerErrors.length > 0) {
     return { valid: false, errors: linkerErrors, data };
   }
@@ -69,11 +89,11 @@ export function validateYaml(filePath: string): { valid: boolean; errors?: strin
   return { valid: true, data };
 }
 
-export function validateCommand(options: { input: string }) {
+export function validateCommand(options: { input: string; asOf?: string }) {
   const inputPath = path.resolve(options.input);
   console.log(`Validating ${inputPath}...`);
   
-  const result = validateYaml(inputPath);
+  const result = validateYaml(inputPath, { asOf: options.asOf });
   
   if (result.valid) {
     console.log(`\x1b[32m✔ OpenAgentModel config at ${options.input} is VALID!\x1b[0m`);

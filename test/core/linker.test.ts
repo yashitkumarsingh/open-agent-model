@@ -187,7 +187,38 @@ agents:
     }
   });
 
-  await t.test('5. Agent Model Binding and Identity Scope Checks', () => {
+  await t.test('5. Identity Expiry Checks Support Deterministic Validation Dates', () => {
+    const datedIdentityYaml = `
+system: test-system
+version: "1.0"
+identities:
+  - id: short-lived-sa
+    type: service_account
+    expires_at: "2026-01-01T00:00:00Z"
+agents:
+  - id: agent-a
+    purpose: "Test"
+`;
+    const tempFile = path.resolve(__dirname, 'temp-as-of.yaml');
+
+    fs.writeFileSync(tempFile, datedIdentityYaml, 'utf8');
+    try {
+      const beforeExpiry = validateYaml(tempFile, { asOf: '2025-12-31T00:00:00Z' });
+      assert.strictEqual(beforeExpiry.valid, true, 'Identity should be valid before its deterministic expiry date');
+
+      const afterExpiry = validateYaml(tempFile, { asOf: '2026-07-01' });
+      assert.strictEqual(afterExpiry.valid, false, 'Identity should be expired after its deterministic expiry date');
+      assert.match(afterExpiry.errors?.join('\n') || '', /expired credentials/);
+
+      const invalidDate = validateYaml(tempFile, { asOf: 'not-a-date' });
+      assert.strictEqual(invalidDate.valid, false, 'Invalid --as-of dates should fail validation');
+      assert.match(invalidDate.errors?.join('\n') || '', /Invalid --as-of value/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
+  await t.test('6. Agent Model Binding and Identity Scope Checks', () => {
     const disallowedModelYaml = `
 system: test-system
 version: "1.0"

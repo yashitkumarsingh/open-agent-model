@@ -70,12 +70,12 @@ export function generatePolicyRecommendationsMd(data: any): string {
 
 Generated for system: **${data.system || 'unnamed-system'}** (v${data.version || '0.1'})
 
-This document contains generated runtime policy rules and security recommendations designed to safeguard your agent system from autonomy and escalation risks.
+This document contains static starter examples and security recommendations designed to safeguard your agent system from autonomy and escalation risks.
 
 ---
 
 ## 1. Rego-Style Policy Examples
-The following Rego-style examples can be adapted for Open Policy Agent or runtime agent middleware to intercept tool-calling decisions and block hazardous execution paths.
+The following Rego-style examples are starting points that can be adapted for Open Policy Agent or runtime agent middleware to intercept tool-calling decisions and block hazardous execution paths.
 
 \`\`\`rego
 ${rego}

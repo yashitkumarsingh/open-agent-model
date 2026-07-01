@@ -9,6 +9,9 @@ test('CLI Process Integrations & Commands Test Suite', async (t) => {
     const validateOut = execSync('node dist/index.js validate -i agentmodel.yaml', { encoding: 'utf8' });
     assert.match(validateOut, /is VALID/, 'Default config validate should succeed');
 
+    const validateAsOfOut = execSync('node dist/index.js validate -i agentmodel.yaml --as-of 2026-01-01', { encoding: 'utf8' });
+    assert.match(validateAsOfOut, /is VALID/, 'Validate command should accept deterministic --as-of dates');
+
     // Assert oam risk command blocks invalid configurations (exits with error code 1)
     assert.throws(() => {
       execSync('node dist/index.js risk -i examples/dodgy-agent.yaml --fail-on high', { stdio: 'pipe' });

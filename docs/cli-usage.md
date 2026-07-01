@@ -41,6 +41,11 @@ Validates your `agentmodel.yaml` config against the JSON Schema and runs referen
 oam validate -i agentmodel.yaml
 ```
 
+Use `--as-of` when identity expiry checks need to be deterministic in CI or review:
+```bash
+oam validate -i agentmodel.yaml --as-of 2026-07-01
+```
+
 ### 3. Analyze Risks (`oam risk`)
 Scans the model configuration for architectural flaws and built-in or experimental declarative policy violations.
 ```bash
@@ -52,6 +57,7 @@ oam risk -i agentmodel.yaml --fail-on high --sarif reports/agent-risks.sarif
 - `-i, --input <file>`: Input specification YAML file (default: `agentmodel.yaml`).
 - `--fail-on <level>`: Threat level threshold that triggers a non-zero exit code (`low`, `medium`, `high`, `critical`).
 - `--sarif <file>`: Output path to save the standard SARIF log file.
+- `--as-of <date>`: Validation date for identity expiry checks (`YYYY-MM-DD` or ISO date-time).
 
 ### 4. Render Architecture Diagram (`oam diagram`)
 Lays out an SVG architecture threat map highlighting trust boundaries and unapproved links:
@@ -66,12 +72,22 @@ oam report -i agentmodel.yaml -d reports/
 ```
 Generated outputs in the directory:
 - `agent-map.svg` (Architecture map)
-- `agent-bom.json` (Structured ABOM)
+- `agent-bom.json` (Structured ABOM with models, identities, data classes, agents, tools, MCP servers, and policies)
 - `policy-recommendations.md` (policy recommendations / Rego-style examples)
 - `agent-risks.sarif` (SARIF JSON logs)
 - `agent-risk-report.html` (Interactive dark-mode dashboard)
 
-### 6. Detect Runtime Drift (`oam drift`)
+Use `--as-of <date>` to make report validation use the same deterministic identity expiry checks as `oam validate`.
+
+### 6. Import MCP Tools (`oam import-mcp`)
+Imports MCP tool definitions from a saved `tools/list` JSON response and links them to an MCP server declaration:
+```bash
+oam import-mcp -i agentmodel.yaml --mcp-id vendor-mcp --tools-file mcp-tools.json --trust-level external
+```
+
+Live MCP discovery is not implemented yet. `--tools-file` is required so the command does not silently import mock tools.
+
+### 7. Detect Runtime Drift (`oam drift`)
 Audits active runtime execution logs (OpenTelemetry trace spans) against design specifications to flag unauthorized tool execution or delegation pathways:
 ```bash
 oam drift -i agentmodel.yaml -t traces.json

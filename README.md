@@ -25,10 +25,14 @@ To keep the documentation clean and developer-friendly, the specifications are d
 2. **[CLI Installation & Usage Guide](docs/cli-usage.md)**
    - Walkthrough of standard commands (`init`, `validate`, `diagram`, `risk`, `report`).
    - Schema field reference and GitHub Actions blocking gates via **SARIF** logs.
-3. **[10 Diverse Reference Scenarios](docs/examples.md)**
+3. **[Built-In Rule Catalog](docs/rule-catalog.md)**
+   - Documents risk rule IDs, severity, intent, and the current static-analysis scope.
+4. **[10 Diverse Reference Scenarios](docs/examples.md)**
    - Copy-pasteable configuration templates matching e-commerce, healthcare, code evaluation, smart home, and supply chain topologies.
-4. **[Enterprise v1.0 Roadmap](docs/roadmap.md)**
+5. **[Enterprise v1.0 Roadmap](docs/roadmap.md)**
    - Outlines future features: LangGraph/CrewAI AST code importers, Sugiyama graph crossing minimization, and OpenTelemetry trace checking.
+6. **[Testing Guide](TESTING.md)**
+   - Lists the local Node 22 test workflow and current test coverage map.
 
 ---
 
@@ -51,7 +55,7 @@ oam validate -i agentmodel.yaml
 # Evaluate static risks
 oam risk -i agentmodel.yaml --fail-on high
 
-# Export complete HTML dashboard and OPA policy recommendations
+# Export complete HTML dashboard and Rego-style policy examples
 oam report -i agentmodel.yaml -d reports/
 
 # Compare runtime OpenTelemetry traces against design spec to find drift

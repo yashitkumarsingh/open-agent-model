@@ -41,6 +41,37 @@ test('Risk Engine Rules Test Suite', async (t) => {
     assert.strictEqual(hasEscalation, true, 'Transitive multi-hop privilege escalation path should be flagged for agent-a');
   });
 
+  await t.test('1b. Side-effecting delegate tools are privilege escalation signals', () => {
+    const sideEffectEscalationModel: SystemModel = {
+      system: 'test-side-effect-escalation',
+      version: '1.0',
+      agents: [
+        {
+          id: 'agent-a',
+          purpose: 'Triage',
+          allowed_delegates: ['agent-b']
+        },
+        {
+          id: 'agent-b',
+          purpose: 'Mutating delegate',
+          allowed_tools: ['write-customer-record']
+        }
+      ],
+      tools: [
+        {
+          id: 'write-customer-record',
+          type: 'api',
+          risk: 'medium',
+          side_effect: 'external_write'
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(sideEffectEscalationModel);
+    const hasEscalation = findings.some(f => f.id.includes('R-001-ESC') && f.context?.toolId === 'write-customer-record');
+    assert.strictEqual(hasEscalation, true, 'R-001 should flag delegated access to side-effecting tools');
+  });
+
   await t.test('2. Static Risk Engine Rule Sets', () => {
     const model: SystemModel = {
       system: 'rule-test',

@@ -817,7 +817,7 @@ export function generateHtmlReport(
     function copyPolicy() {
       const codeText = document.getElementById('policy-code').textContent;
       navigator.clipboard.writeText(codeText).then(() => {
-        alert('OPA Rego policy copied to clipboard!');
+        alert('Rego-style policy example copied to clipboard!');
       });
     }
   </script>

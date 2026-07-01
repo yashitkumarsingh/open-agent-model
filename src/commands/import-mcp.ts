@@ -19,41 +19,41 @@ export function importMcpCommand(options: {
 
   // Load and parse YAML
   const validation = validateYaml(inputPath);
+  if (!validation.valid) {
+    console.error(`Error: agentmodel validation failed before MCP import.`);
+    validation.errors?.forEach((err) => console.error(`  - ${err}`));
+    process.exit(1);
+  }
+
   const data = validation.data;
   if (!data) {
     console.error(`Error: Unable to parse agentmodel data.`);
     process.exit(1);
   }
 
-  // Load mock or queried tools list
-  let toolsToImport: any[] = [];
-  if (options.toolsFile) {
-    const toolsFilePath = path.resolve(options.toolsFile);
-    if (!fs.existsSync(toolsFilePath)) {
-      console.error(`Error: Tools definition file not found at ${toolsFilePath}`);
-      process.exit(1);
-    }
-    try {
-      const content = fs.readFileSync(toolsFilePath, 'utf8');
-      toolsToImport = JSON.parse(content); // Expects array of tools matching MCP tools/list output
-    } catch (error: any) {
-      console.error(`Error reading tools file: ${error?.message || error}`);
-      process.exit(1);
-    }
-  } else {
-    // Standard mock tools from MCP list tool request
-    toolsToImport = [
-      {
-        name: `${options.mcpId}-status-check`,
-        description: `Exposed status checks for ${options.mcpId} integration.`,
-        inputSchema: { type: "object", properties: {} }
-      },
-      {
-        name: `${options.mcpId}-sync-notes`,
-        description: `Sync notes for customers via ${options.mcpId}.`,
-        inputSchema: { type: "object", properties: { customer_id: { type: "string" } } }
-      }
-    ];
+  if (!options.toolsFile) {
+    console.error(`Error: Live MCP discovery is not implemented yet. Provide --tools-file with a JSON array from an MCP tools/list response.`);
+    process.exit(1);
+  }
+
+  const toolsFilePath = path.resolve(options.toolsFile);
+  if (!fs.existsSync(toolsFilePath)) {
+    console.error(`Error: Tools definition file not found at ${toolsFilePath}`);
+    process.exit(1);
+  }
+
+  let toolsToImport: any[];
+  try {
+    const content = fs.readFileSync(toolsFilePath, 'utf8');
+    toolsToImport = JSON.parse(content); // Expects array of tools matching MCP tools/list output
+  } catch (error: any) {
+    console.error(`Error reading tools file: ${error?.message || error}`);
+    process.exit(1);
+  }
+
+  if (!Array.isArray(toolsToImport)) {
+    console.error(`Error: --tools-file must contain a JSON array of MCP tool definitions.`);
+    process.exit(1);
   }
 
   // 1. Update or create MCP Server declaration

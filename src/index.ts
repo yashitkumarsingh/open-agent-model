@@ -29,6 +29,7 @@ program
   .command('validate')
   .description('Validate agentmodel.yaml against the JSON schema')
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
+  .option('--as-of <date>', 'Validation date for expiry checks (YYYY-MM-DD or ISO date-time)')
   .action((options) => {
     validateCommand(options);
   });
@@ -48,6 +49,7 @@ program
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
   .option('--fail-on <level>', 'Risk level to trigger non-zero exit code (low, medium, high, critical)', 'high')
   .option('--sarif <file>', 'Output path for SARIF security report')
+  .option('--as-of <date>', 'Validation date for expiry checks (YYYY-MM-DD or ISO date-time)')
   .action((options) => {
     riskCommand(options);
   });
@@ -57,6 +59,7 @@ program
   .description('Generate validation reports, SVG diagram, ABOM, and interactive HTML dashboard')
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
   .option('-d, --dir <directory>', 'Output directory for reports', '.')
+  .option('--as-of <date>', 'Validation date for expiry checks (YYYY-MM-DD or ISO date-time)')
   .action((options) => {
     reportCommand(options);
   });

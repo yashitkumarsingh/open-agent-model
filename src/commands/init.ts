@@ -4,90 +4,102 @@ import path from 'path';
 const defaultTemplate = `# OpenAgentModel Specification
 #
 # NOTE: This default template is fully secured and passes all static safety gates.
-system: healthcare-triage-platform
-version: "0.1"
+system: customer-support-platform
+version: "0.2.1"
+
+models:
+  - id: gpt-5.5-thinking
+    provider: openai
+    deployment: prod-agent-router
+    allowed_for: [support-triage]
+    data_retention: disabled
+    region: australia-east
+    risk: medium
+
+identities:
+  - id: triage-agent-sa
+    type: service_account
+    owner: platform-team
+    expires_at: "2026-12-31T23:59:59Z"
+    scopes: [crm.read]
 
 agents:
-  - id: triage-agent
-    purpose: "Analyze patient symptom descriptions and recommend scheduling slots."
+  - id: support-triage
+    purpose: "Analyze incoming customer tickets and route payment issues to refund executor."
     framework: crewai
     autonomy: supervised
     memory:
       type: vector
       contains:
-        - patient_symptoms
+        - customer_details
       write_access: true
-      poisoning_protection: true # Safe: Vector memory poisoning checks are enabled
+      poisoning_protection: true # Safe: Vector memory poisoning protection is enabled
     allowed_tools:
-      - query-symptom-db
-      - read-patient-chart
-    approval_required_for:
-      - read-patient-chart # Safe Gate: HIPAA database access requires human approval
-    allowed_delegates: [] # Safe: Removed delegation escalation pathway
+      - read-crm-data
+    allowed_delegates: [] # Safe: Avoids A2A transitive escalation routes
     retry_policy:
-      max_retries: 5 # Safe: Limited retries to avoid API cost runaways
-      loop_detection: true # Safe: Recursive execution checks enabled
+      max_retries: 3
+      loop_detection: true
     spend_limit:
       max_cost_usd: 0.20
       time_window: 1h
 
-  - id: clinical-diagnostician
-    purpose: "Diagnose conditions and recommend clinical prescriptions."
+  - id: refund-executor
+    purpose: "Evaluate customer requests and securely execute financial refund transfers."
     framework: langgraph
     autonomy: human-approval-required
     allowed_tools:
-      - query-symptom-db
-      - prescribe-medication
+      - read-crm-data
+      - issue-refund
     approval_required_for:
-      - prescribe-medication # Safe Gate: Prescriptions require human signoff
+      - issue-refund # Safe Gate: Financial operations require human authorization
     retry_policy:
-      max_retries: 3 # Safe: Defends against loop runaways
+      max_retries: 3
       loop_detection: true
     spend_limit:
-      max_cost_usd: 0.40 # Safe: Under the custom policy cap limit
+      max_cost_usd: 0.40 # Safe: Within system budget constraints
 
 tools:
-  - id: query-symptom-db
+  - id: read-crm-data
     type: api
-    description: "Fetch matching symptoms from medical lookup tables."
+    description: "Fetch basic customer details from database."
     risk: low
+    side_effect: read
 
-  - id: read-patient-chart
-    type: database
-    description: "Fetch HIPAA sensitive medical histories."
-    data_classes: [patient_health_records]
-    risk: high
-
-  - id: prescribe-medication
-    type: api
-    description: "Issue prescription orders to pharmacy networks."
+  - id: issue-refund
+    type: payment_api
+    description: "Process credit card and banking refunds."
     risk: critical
-    requires_human_approval: true
+    side_effect: payout
+    auth_identity: triage-agent-sa
+    approval:
+      mode: human
+      approver_role: finance-manager
+      expiry_seconds: 300
+    rate_limit:
+      max_calls_per_task: 1
 
 mcp_servers:
-  - id: hospital-ehr-mcp
+  - id: support-crm-mcp
     trust_level: internal
     exposes:
-      - read-patient-chart
-
-  - id: external-pharmacy-mcp
-    trust_level: external
-    exposes:
-      - prescribe-medication
+      - read-crm-data
 
 data_classes:
-  - id: patient_symptoms
+  - id: customer_details
     sensitivity: high
-    classification: pii
-
-  - id: patient_health_records
-    sensitivity: critical
     classification: pii
 
 policies:
   - "max_cost_per_task_usd: 0.50"
-  - "max_tool_calls_per_task: 15"
-  - "no_external_mcp_can_access_payment_tokens"
+  - "max_tool_calls_per_task: 10"
+  - id: approve-critical-write-tools
+    severity: critical
+    when:
+      agent.autonomy: supervised
+      tool.risk: critical
+    require:
+      tool.requires_human_approval: true
 `;
 
 export function initCommand(options: { output: string }) {

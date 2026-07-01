@@ -5,7 +5,40 @@ export interface SystemModel {
   tools?: Tool[];
   mcp_servers?: McpServer[];
   data_classes?: DataClass[];
-  policies?: string[];
+  models?: ModelCatalogEntry[];
+  identities?: IdentityCatalogEntry[];
+  policies?: (string | DeclarativePolicy)[];
+}
+
+export interface ModelCatalogEntry {
+  id: string;
+  provider: string;
+  deployment?: string;
+  allowed_for?: string[];
+  data_retention?: 'enabled' | 'disabled';
+  region?: string;
+  risk: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface IdentityCatalogEntry {
+  id: string;
+  type: string;
+  owner?: string;
+  expires_at?: string;
+  scopes?: string[];
+}
+
+export interface DeclarativePolicy {
+  id: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  when: {
+    'agent.autonomy'?: string;
+    'tool.risk'?: string;
+  };
+  require: {
+    'tool.requires_human_approval'?: boolean;
+    'agent.spend_limit.max_cost_usd'?: number;
+  };
 }
 
 export interface Agent {
@@ -52,6 +85,20 @@ export interface Tool {
   data_classes?: string[];
   risk?: ToolRisk;
   requires_human_approval?: boolean;
+  side_effect?: 'read' | 'external_write' | 'payout' | 'system_alteration';
+  auth_identity?: string;
+  approval?: ToolApproval;
+  rate_limit?: ToolRateLimit;
+}
+
+export interface ToolApproval {
+  mode: 'none' | 'human' | 'multi-party';
+  approver_role?: string;
+  expiry_seconds?: number;
+}
+
+export interface ToolRateLimit {
+  max_calls_per_task: number;
 }
 
 export type ToolRisk = 'low' | 'medium' | 'high' | 'critical';

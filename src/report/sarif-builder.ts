@@ -1,10 +1,18 @@
+import fs from 'fs';
 import { Finding } from '../risk-engine/rules.js';
+import { findLineNumber } from '../core/locator.js';
 
 export function generateSarifReport(findings: Finding[], modelPath: string): string {
+  let rawContent = '';
+  try {
+    rawContent = fs.readFileSync(modelPath, 'utf8');
+  } catch (err) {
+    // If reading fails, locator falls back to line 1
+  }
+
   const rulesMap = new Map<string, { id: string; name: string; desc: string }>();
   
   findings.forEach((f) => {
-    // Determine a rule ID prefix (e.g. R-001)
     let ruleId = 'R-GENERIC';
     const match = f.id.match(/R-\d+/);
     if (match) {
@@ -42,6 +50,20 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
     if (f.severity === 'critical') level = 'error';
     else if (f.severity === 'low') level = 'note';
 
+    // Find the target node ID to search for in YAML source mapping
+    let targetKey = '';
+    if (f.agentId && f.agentId !== 'system') {
+      targetKey = f.agentId;
+    } else if (f.context?.toolId) {
+      targetKey = f.context.toolId;
+    } else if (f.context?.dataClassId) {
+      targetKey = f.context.dataClassId;
+    } else if (f.context?.mcpId) {
+      targetKey = f.context.mcpId;
+    }
+
+    const line = targetKey ? findLineNumber(rawContent, targetKey) : 1;
+
     return {
       ruleId: ruleId,
       level: level,
@@ -56,7 +78,7 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
               uriBaseId: 'SRCROOT'
             },
             region: {
-              startLine: 1,
+              startLine: line,
               startColumn: 1
             }
           }
@@ -74,7 +96,7 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
           driver: {
             name: 'OpenAgentModel',
             informationUri: 'https://github.com/open-agent-model/open-agent-model',
-            version: '0.1.0',
+            version: '0.2.1',
             rules: sarifRules
           }
         },

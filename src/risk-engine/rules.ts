@@ -31,7 +31,7 @@ export interface Rule {
   check(data: SystemModel): Finding[];
 }
 
-// 1. Rule: A2A Privilege Escalation
+// 1. Rule: A2A Privilege Escalation (Transitive Multi-hop Delegation Checker)
 const a2aPrivilegeEscalationRule: Rule = {
   id: 'R-001',
   name: 'Agent-to-Agent Privilege Escalation',
@@ -53,74 +53,98 @@ const a2aPrivilegeEscalationRule: Rule = {
     agents.forEach((a) => agentMap.set(a.id, a));
 
     agents.forEach((agent) => {
-      if (agent.allowed_delegates && Array.isArray(agent.allowed_delegates)) {
-        agent.allowed_delegates.forEach((delegateId: string) => {
-          const delegate = agentMap.get(delegateId);
-          if (delegate) {
-            const agentTools = new Set(agent.allowed_tools || []);
-            const delegateTools = delegate.allowed_tools || [];
+      // Traverse allowed delegation graph to find all transitively reachable agents
+      const visited = new Set<string>();
+      const queue: string[] = [];
+      
+      (agent.allowed_delegates || []).forEach((dId) => {
+        if (!visited.has(dId)) {
+          visited.add(dId);
+          queue.push(dId);
+        }
+      });
 
-            delegateTools.forEach((toolId: string) => {
-              if (!agentTools.has(toolId)) {
-                const tool = toolMap.get(toolId);
-                if (tool && (tool.risk === 'high' || tool.risk === 'critical' || tool.type === 'payment_api' || tool.requires_human_approval === true)) {
-                  findings.push({
-                    id: 'R-001-ESC',
-                    title: 'A2A Privilege Escalation Path Detected',
-                    severity: 'critical',
-                    agentId: agent.id,
-                    description: `Agent '${agent.id}' can delegate tasks to '${delegateId}'. However, '${delegateId}' has access to high-privilege tool '${toolId}' which '${agent.id}' is not authorized to call directly.`,
-                    recommendation: `Restrict delegation from '${agent.id}' to '${delegateId}', or enforce strict human-in-the-loop validation at the delegation boundary.`,
-                    owaspMapping: 'OWASP-10: System and Network Escalation',
-                    context: { delegateId, toolId }
-                  });
-                }
-              }
-            });
-
-            // Check sensitive data classes
-            const agentDataClasses = new Set<string>();
-            (agent.allowed_tools || []).forEach((tid: string) => {
-              const t = toolMap.get(tid);
-              if (t && t.data_classes) {
-                t.data_classes.forEach((dc: string) => agentDataClasses.add(dc));
-              }
-            });
-            if (agent.memory && agent.memory.contains) {
-              agent.memory.contains.forEach((dc: string) => agentDataClasses.add(dc));
+      while (queue.length > 0) {
+        const currId = queue.shift()!;
+        const currAgent = agentMap.get(currId);
+        if (currAgent && currAgent.allowed_delegates) {
+          currAgent.allowed_delegates.forEach((delId) => {
+            if (!visited.has(delId)) {
+              visited.add(delId);
+              queue.push(delId);
             }
+          });
+        }
+      }
 
-            const delegateDataClasses = new Set<string>();
-            delegateTools.forEach((tid: string) => {
-              const t = toolMap.get(tid);
-              if (t && t.data_classes) {
-                t.data_classes.forEach((dc: string) => delegateDataClasses.add(dc));
-              }
-            });
-            if (delegate.memory && delegate.memory.contains) {
-              delegate.memory.contains.forEach((dc: string) => delegateDataClasses.add(dc));
+      // Check each transitively reached delegate for privilege escalations
+      visited.forEach((delegateId) => {
+        const delegate = agentMap.get(delegateId);
+        if (!delegate) return;
+
+        const agentTools = new Set(agent.allowed_tools || []);
+        const delegateTools = delegate.allowed_tools || [];
+
+        // Check high-privilege tools access
+        delegateTools.forEach((toolId: string) => {
+          if (!agentTools.has(toolId)) {
+            const tool = toolMap.get(toolId);
+            if (tool && (tool.risk === 'high' || tool.risk === 'critical' || tool.type === 'payment_api' || tool.requires_human_approval === true)) {
+              findings.push({
+                id: 'R-001-ESC',
+                title: 'A2A Privilege Escalation Path Detected',
+                severity: 'critical',
+                agentId: agent.id,
+                description: `Agent '${agent.id}' can transitively delegate to '${delegateId}' (who has access to high-privilege tool '${toolId}' which '${agent.id}' cannot call directly).`,
+                recommendation: `Restrict delegation chains, or enforce human approval gates on critical actions.`,
+                owaspMapping: 'OWASP-10: System and Network Escalation',
+                context: { delegateId, toolId }
+              });
             }
-
-            delegateDataClasses.forEach((dcId) => {
-              if (!agentDataClasses.has(dcId)) {
-                const dc = dataClassMap.get(dcId);
-                if (dc && (dc.sensitivity === 'high' || dc.sensitivity === 'critical')) {
-                  findings.push({
-                    id: 'R-001-DAT',
-                    title: 'Indirect Access to Sensitive Data via A2A Delegation',
-                    severity: 'critical',
-                    agentId: agent.id,
-                    description: `Agent '${agent.id}' can delegate to '${delegateId}', granting indirect access to sensitive data class '${dcId}' (${dc.sensitivity} sensitivity) which '${agent.id}' cannot access directly.`,
-                    recommendation: `Add access control lists (ACLs) to data exfiltration points, or require explicit user consent when delegating tasks that process sensitive payloads.`,
-                    owaspMapping: 'OWASP-6: Sensitive Information Disclosure',
-                    context: { delegateId, dataClassId: dcId }
-                  });
-                }
-              }
-            });
           }
         });
-      }
+
+        // Check sensitive data classes exfiltration
+        const agentDataClasses = new Set<string>();
+        (agent.allowed_tools || []).forEach((tid: string) => {
+          const t = toolMap.get(tid);
+          if (t && t.data_classes) {
+            t.data_classes.forEach((dc: string) => agentDataClasses.add(dc));
+          }
+        });
+        if (agent.memory && agent.memory.contains) {
+          agent.memory.contains.forEach((dc: string) => agentDataClasses.add(dc));
+        }
+
+        const delegateDataClasses = new Set<string>();
+        delegateTools.forEach((tid: string) => {
+          const t = toolMap.get(tid);
+          if (t && t.data_classes) {
+            t.data_classes.forEach((dc: string) => delegateDataClasses.add(dc));
+          }
+        });
+        if (delegate.memory && delegate.memory.contains) {
+          delegate.memory.contains.forEach((dc: string) => delegateDataClasses.add(dc));
+        }
+
+        delegateDataClasses.forEach((dcId) => {
+          if (!agentDataClasses.has(dcId)) {
+            const dc = dataClassMap.get(dcId);
+            if (dc && (dc.sensitivity === 'high' || dc.sensitivity === 'critical')) {
+              findings.push({
+                id: 'R-001-DAT',
+                title: 'Indirect Access to Sensitive Data via A2A Delegation',
+                severity: 'critical',
+                agentId: agent.id,
+                description: `Agent '${agent.id}' can transitively delegate to '${delegateId}', granting indirect access to sensitive data class '${dcId}' (${dc.sensitivity} sensitivity) which '${agent.id}' cannot access directly.`,
+                recommendation: `Restrict downstream delegation scopes or enforce data boundary filters.`,
+                owaspMapping: 'OWASP-6: Sensitive Information Disclosure',
+                context: { delegateId, dataClassId: dcId }
+              });
+            }
+          }
+        });
+      });
     });
 
     return findings;

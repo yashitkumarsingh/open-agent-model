@@ -11,6 +11,82 @@
       "type": "string",
       "description": "The version of the system definition."
     },
+    "models": {
+      "type": "array",
+      "description": "Catalog of LLMs and language models approved for use in the system.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique model ID."
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider (e.g. openai, anthropic, google, local)."
+          },
+          "deployment": {
+            "type": "string",
+            "description": "Deployment name or endpoint target."
+          },
+          "allowed_for": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of agent IDs allowed to use this model."
+          },
+          "data_retention": {
+            "type": "string",
+            "enum": ["enabled", "disabled"],
+            "description": "Whether training data retention is enabled on the model gateway."
+          },
+          "region": {
+            "type": "string",
+            "description": "Geographical compute zone of the model deployment."
+          },
+          "risk": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "Risk profile associated with the model's policy compliance or provider type."
+          }
+        },
+        "required": ["id", "provider", "risk"]
+      }
+    },
+    "identities": {
+      "type": "array",
+      "description": "Credentials, roles, and authorization accounts used by the agents or tools.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identity ID."
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of identity (e.g., service_account, user, api_key, jwt)."
+          },
+          "owner": {
+            "type": "string",
+            "description": "Owner or custodian team."
+          },
+          "expires_at": {
+            "type": "string",
+            "description": "ISO date string when these credentials expire."
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Granted authorization scopes."
+          }
+        },
+        "required": ["id", "type"]
+      }
+    },
     "agents": {
       "type": "array",
       "items": {
@@ -146,6 +222,40 @@
           },
           "requires_human_approval": {
             "type": "boolean"
+          },
+          "side_effect": {
+            "type": "string",
+            "enum": ["read", "external_write", "payout", "system_alteration"],
+            "description": "Operational impact profile of tool execution."
+          },
+          "auth_identity": {
+            "type": "string",
+            "description": "The credentials ID referenced to perform authentication."
+          },
+          "approval": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["none", "human", "multi-party"]
+              },
+              "approver_role": {
+                "type": "string"
+              },
+              "expiry_seconds": {
+                "type": "integer"
+              }
+            },
+            "required": ["mode"]
+          },
+          "rate_limit": {
+            "type": "object",
+            "properties": {
+              "max_calls_per_task": {
+                "type": "integer"
+              }
+            },
+            "required": ["max_calls_per_task"]
           }
         },
         "required": ["id", "type"]
@@ -197,7 +307,46 @@
     "policies": {
       "type": "array",
       "items": {
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"]
+              },
+              "when": {
+                "type": "object",
+                "properties": {
+                  "agent.autonomy": {
+                    "type": "string"
+                  },
+                  "tool.risk": {
+                    "type": "string"
+                  }
+                }
+              },
+              "require": {
+                "type": "object",
+                "properties": {
+                  "tool.requires_human_approval": {
+                    "type": "boolean"
+                  },
+                  "agent.spend_limit.max_cost_usd": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "required": ["id", "severity", "when", "require"]
+          }
+        ]
       }
     }
   },

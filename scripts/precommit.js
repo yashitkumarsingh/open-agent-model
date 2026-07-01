@@ -9,7 +9,14 @@ try {
   console.log('Compiling TypeScript codebase...');
   execSync('npm run build', { stdio: 'inherit' });
 
-  // 2. Validate agentmodel.yaml
+  // 1.5 Run Unit Tests (Conditionally based on Node version supporting --import)
+  console.log('Running automated unit tests...');
+  const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+  if (nodeMajor >= 20) {
+    execSync('npm run test', { stdio: 'inherit' });
+  } else {
+    console.warn(`\x1b[33m⚠️ Skipping unit tests run: Node version (${process.version}) is less than v20 (needed for native test runner & --import).\x1b[0m`);
+  }
   console.log('Validating agentmodel.yaml...');
   execSync('node dist/index.js validate -i agentmodel.yaml', { stdio: 'inherit' });
 

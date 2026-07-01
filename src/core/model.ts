@@ -91,6 +91,12 @@ export interface Tool {
   required_scopes?: string[];
   approval?: ToolApproval;
   rate_limit?: ToolRateLimit;
+  /** Provenance metadata populated when tool was imported from an MCP server. */
+  source?: ToolSource;
+  /** JSON Schema of the tool's input parameters (from MCP tools/list inputSchema). */
+  input_schema?: Record<string, unknown>;
+  /** MCP tool behaviour hints for static analysis and risk engine. */
+  annotations?: ToolAnnotations;
 }
 
 export interface ToolApproval {
@@ -104,6 +110,20 @@ export interface ToolRateLimit {
 }
 
 export type ToolRisk = 'low' | 'medium' | 'high' | 'critical';
+
+/** Origin provenance of a tool definition — populated by import-mcp. */
+export interface ToolSource {
+  kind: 'mcp' | 'internal' | 'external';
+  mcp_server?: string;
+  original_name?: string;
+}
+
+/** MCP tool behaviour hints surfaced from tools/list response annotations. */
+export interface ToolAnnotations {
+  destructive_hint?: boolean;
+  read_only_hint?: boolean;
+  idempotent_hint?: boolean;
+}
 
 export interface McpServer {
   id: string;

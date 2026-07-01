@@ -278,6 +278,50 @@
               }
             },
             "required": ["max_calls_per_task"]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Provenance metadata for MCP-imported tools.",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["mcp", "internal", "external"],
+                "description": "Origin type of this tool definition."
+              },
+              "mcp_server": {
+                "type": "string",
+                "description": "ID of the MCP server this tool was discovered from."
+              },
+              "original_name": {
+                "type": "string",
+                "description": "Original tool name as returned by the MCP tools/list response."
+              }
+            },
+            "required": ["kind"]
+          },
+          "input_schema": {
+            "type": "object",
+            "description": "JSON Schema describing the tool input parameters (from MCP tools/list inputSchema)."
+          },
+          "annotations": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "MCP tool behaviour hints for destructiveness, idempotency, and read-only status.",
+            "properties": {
+              "destructive_hint": {
+                "type": "boolean",
+                "description": "True if this tool may have destructive side effects."
+              },
+              "read_only_hint": {
+                "type": "boolean",
+                "description": "True if this tool only reads data and has no side effects."
+              },
+              "idempotent_hint": {
+                "type": "boolean",
+                "description": "True if calling this tool multiple times produces the same result."
+              }
+            }
           }
         },
         "required": ["id", "type"]

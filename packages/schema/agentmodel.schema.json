@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenAgentModel",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "system": {
       "type": "string",
@@ -16,6 +17,7 @@
       "description": "Catalog of LLMs and language models approved for use in the system.",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string",
@@ -59,6 +61,7 @@
       "description": "Credentials, roles, and authorization accounts used by the agents or tools.",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string",
@@ -74,6 +77,7 @@
           },
           "expires_at": {
             "type": "string",
+            "format": "date-time",
             "description": "ISO date string when these credentials expire."
           },
           "scopes": {
@@ -91,6 +95,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string",
@@ -111,6 +116,7 @@
           },
           "memory": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "type": {
                 "type": "string",
@@ -164,6 +170,7 @@
           },
           "retry_policy": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "max_retries": {
                 "type": "integer"
@@ -178,6 +185,7 @@
           },
           "spend_limit": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "max_cost_usd": {
                 "type": "number"
@@ -198,6 +206,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string"
@@ -234,6 +243,7 @@
           },
           "approval": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "mode": {
                 "type": "string",
@@ -250,6 +260,7 @@
           },
           "rate_limit": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "max_calls_per_task": {
                 "type": "integer"
@@ -265,6 +276,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string"
@@ -288,6 +300,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string"
@@ -313,6 +326,7 @@
           },
           {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "id": {
                 "type": "string"
@@ -323,6 +337,7 @@
               },
               "when": {
                 "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "agent.autonomy": {
                     "type": "string"
@@ -334,6 +349,7 @@
               },
               "require": {
                 "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "tool.requires_human_approval": {
                     "type": "boolean"

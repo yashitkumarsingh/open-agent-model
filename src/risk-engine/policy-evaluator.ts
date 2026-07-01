@@ -1,5 +1,6 @@
 import { SystemModel, Agent, Tool, McpServer, DataClass, DeclarativePolicy } from '../core/model.js';
 import { Finding } from './rules.js';
+import { hasHumanApproval } from './approval.js';
 
 export function evaluatePolicies(data: SystemModel): Finding[] {
   const findings: Finding[] = [];
@@ -124,11 +125,7 @@ export function evaluatePolicies(data: SystemModel): Finding[] {
           allowedTools.forEach((toolId) => {
             if (toolId.toLowerCase().includes('refund')) {
               const tool = toolMap.get(toolId);
-              const toolRequiresApproval = tool?.requires_human_approval === true;
-              const agentApproves = agent.approval_required_for?.includes(toolId);
-              const agentHumanApproval = agent.autonomy === 'human-approval-required';
-
-              if (!toolRequiresApproval && !agentApproves && !agentHumanApproval) {
+              if (tool && !hasHumanApproval(agent, tool, toolId)) {
                 findings.push({
                   id: nextId(),
                   title: 'Policy Violation: Unapproved Refund Capability',
@@ -194,10 +191,7 @@ export function evaluatePolicies(data: SystemModel): Finding[] {
 
           // Check requires human approval
           if (requiredHumanApproval === true) {
-            const hasToolGate = tool.requires_human_approval === true || tool.approval?.mode === 'human' || tool.approval?.mode === 'multi-party';
-            const hasAgentGate = agent.approval_required_for?.includes(toolId) || agent.autonomy === 'human-approval-required';
-
-            if (!hasToolGate && !hasAgentGate) {
+            if (!hasHumanApproval(agent, tool, toolId)) {
               findings.push({
                 id: nextId(),
                 title: `Policy Violation: Unapproved Critical Tool Execution [${decPolicy.id}]`,

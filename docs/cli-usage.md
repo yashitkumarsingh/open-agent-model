@@ -13,7 +13,7 @@ This document describes how to install, configure, and execute the **OpenAgentMo
 ### Local Build Setup
 Clone the repository and install packages:
 ```bash
-git clone https://github.com/open-agent-model/open-agent-model.git
+git clone https://github.com/yashitkumarsingh/open-agent-model.git
 cd open-agent-model
 npm install
 npm run build
@@ -35,13 +35,13 @@ oam init -o agentmodel.yaml
 ```
 
 ### 2. Validate Specifications (`oam validate`)
-Validates your `agentmodel.yaml` config against the JSON Schema and runs referential semantic link checks (verifying that all declared delegates, tool bindings, and data classes exist).
+Validates your `agentmodel.yaml` config against the JSON Schema and runs referential semantic link checks. Validation rejects unknown properties, duplicate IDs, missing delegates, missing tool bindings, missing model-agent bindings, missing tool identities, invalid identity expiry timestamps, and data classes that are referenced but not declared.
 ```bash
 oam validate -i agentmodel.yaml
 ```
 
 ### 3. Analyze Risks (`oam risk`)
-Scans the model configuration for architectural flaws and custom policy violations.
+Scans the model configuration for architectural flaws and built-in or experimental declarative policy violations.
 ```bash
 # Returns exit code 1 if any high or critical warnings are flagged
 oam risk -i agentmodel.yaml --fail-on high --sarif reports/agent-risks.sarif
@@ -53,7 +53,7 @@ oam risk -i agentmodel.yaml --fail-on high --sarif reports/agent-risks.sarif
 - `--sarif <file>`: Output path to save the standard SARIF log file.
 
 ### 4. Render Architecture Diagram (`oam diagram`)
-Lays out a beautiful SVG architecture threat map highlighting trust boundaries and unapproved links:
+Lays out an SVG architecture threat map highlighting trust boundaries and unapproved links:
 ```bash
 oam diagram -i agentmodel.yaml -o agent-map.svg
 ```
@@ -64,7 +64,7 @@ Compiles syntax checks, diagrams, risk findings, and policy recommendations into
 oam report -i agentmodel.yaml -d reports/
 ```
 Generated outputs in the directory:
-- `agent-map.svg` (Visual Map)
+- `agent-map.svg` (Architecture map)
 - `agent-bom.json` (Structured ABOM)
 - `policy-recommendations.md` (Open Policy Agent Rego codes)
 - `agent-risks.sarif` (SARIF JSON logs)
@@ -83,6 +83,80 @@ oam drift -i agentmodel.yaml -t traces.json
 #### Verification Scope:
 - **`agent.tool_call`**: Checks if the tool called is authorized in the agent's `allowed_tools` list.
 - **`agent.delegate`**: Checks if task delegation between Agent A and Agent B matches the declared `allowed_delegates` pathway.
+
+> [!NOTE]
+> Drift analysis currently supports these OpenAgentModel span names and `gen_ai.*` attributes as a compatibility format. OTel GenAI/MCP semantic-convention adapters are roadmap work, not a current guarantee.
+
+---
+
+## Schema Reference
+
+OpenAgentModel treats `agentmodel.yaml` as a strict security contract. Unknown object properties fail validation so typos such as `requires_human_aproval` cannot silently pass.
+
+### Root
+- `system`: Human-readable system ID or name.
+- `version`: Version of the model definition.
+- `models`: Approved model catalog.
+- `identities`: Credentials, roles, and service accounts used by tools.
+- `agents`: Agent definitions and their capabilities.
+- `tools`: Callable tools, side effects, auth bindings, approvals, and rate limits.
+- `mcp_servers`: MCP trust boundaries and exposed tools.
+- `data_classes`: Data sensitivity and classification catalog.
+- `policies`: Legacy string policies or experimental declarative policy objects.
+
+### Models
+```yaml
+models:
+  - id: gpt-5.5-thinking
+    provider: openai
+    deployment: prod-agent-router
+    allowed_for: [support-triage]
+    data_retention: disabled
+    region: australia-east
+    risk: medium
+```
+`allowed_for` entries must reference declared `agents`.
+
+### Identities
+```yaml
+identities:
+  - id: triage-agent-sa
+    type: service_account
+    owner: platform-team
+    expires_at: "2026-12-31T23:59:59Z"
+    scopes: [crm.read]
+```
+`expires_at` must be a valid future date-time when present.
+
+### Tools
+```yaml
+tools:
+  - id: issue-refund
+    type: payment_api
+    risk: critical
+    side_effect: payout
+    auth_identity: triage-agent-sa
+    approval:
+      mode: human
+      approver_role: finance-manager
+      expiry_seconds: 300
+    rate_limit:
+      max_calls_per_task: 1
+```
+`auth_identity` must reference a declared identity. Human approval can be declared with legacy `requires_human_approval: true`, structured `approval.mode: human`, structured `approval.mode: multi-party`, or an agent-level `approval_required_for` entry.
+
+### Experimental Declarative Policies
+```yaml
+policies:
+  - id: approve-critical-write-tools
+    severity: critical
+    when:
+      agent.autonomy: supervised
+      tool.risk: critical
+    require:
+      tool.requires_human_approval: true
+```
+This is an intentionally small matcher today. It currently supports agent autonomy, tool risk, human-approval requirements, and maximum agent spend limits.
 
 ---
 

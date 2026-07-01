@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { evaluatePolicies } from '../../dist/risk-engine/policy-evaluator.js';
-import { SystemModel } from '../../dist/core/model.js';
+import { evaluatePolicies } from '../../src/risk-engine/policy-evaluator.js';
+import { SystemModel } from '../../src/core/model.js';
 
 test('Risk Engine Policy Evaluator Test Suite', async (t) => {
 
@@ -72,6 +72,48 @@ test('Risk Engine Policy Evaluator Test Suite', async (t) => {
     // Assert retry calls exceeded
     const hasCallsExceeded = findings.some(f => f.title === 'Policy Violation: Max Tool Calls Exceeded');
     assert.strictEqual(hasCallsExceeded, true, 'String policies should validate execution loop call constraints');
+  });
+
+  await t.test('3. Structured Approval Mode Satisfies Declarative Policy', () => {
+    const model: SystemModel = {
+      system: 'test-structured-approval',
+      version: '1.0',
+      agents: [
+        {
+          id: 'supervised-agent',
+          purpose: 'Test',
+          autonomy: 'supervised',
+          allowed_tools: ['dangerous-tool']
+        }
+      ],
+      tools: [
+        {
+          id: 'dangerous-tool',
+          type: 'api',
+          risk: 'critical',
+          approval: {
+            mode: 'multi-party'
+          }
+        }
+      ],
+      policies: [
+        {
+          id: 'approve-critical-write-tools',
+          severity: 'critical',
+          when: {
+            'agent.autonomy': 'supervised',
+            'tool.risk': 'critical'
+          },
+          require: {
+            'tool.requires_human_approval': true
+          }
+        }
+      ]
+    };
+
+    const findings = evaluatePolicies(model);
+    const hasViolation = findings.some(f => f.agentId === 'supervised-agent');
+    assert.strictEqual(hasViolation, false, 'Structured approval modes should satisfy declarative human approval policies');
   });
 
 });

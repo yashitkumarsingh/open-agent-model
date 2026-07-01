@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { findLineNumber } from '../../dist/core/locator.js';
+import { findLineNumber } from '../../src/core/locator.js';
 
 test('Core Locator Test Suite', async (t) => {
 

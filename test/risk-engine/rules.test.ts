@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { runRiskChecks } from '../../dist/risk-engine/rules.js';
-import { SystemModel } from '../../dist/core/model.js';
+import { runRiskChecks } from '../../src/risk-engine/rules.js';
+import { SystemModel } from '../../src/core/model.js';
 
 test('Risk Engine Rules Test Suite', async (t) => {
 
@@ -103,14 +103,13 @@ test('Risk Engine Rules Test Suite', async (t) => {
       data_classes: [
         {
           id: 'customer-pii',
+          sensitivity: 'high',
           classification: 'pii',
-          description: 'PII data'
         }
       ],
       mcp_servers: [
         {
           id: 'external-vendor-mcp',
-          uri: 'https://vendor.example.com/mcp',
           trust_level: 'external', // R-003 violation: PII connected to external MCP
           exposes: ['pii-extractor'] 
         }
@@ -126,6 +125,35 @@ test('Risk Engine Rules Test Suite', async (t) => {
     // R-003
     const hasPiiExfiltration = findings.some(f => f.id.includes('R-003'));
     assert.strictEqual(hasPiiExfiltration, true, 'Risk engine should catch PII exfiltration via external MCP boundaries');
+  });
+
+  await t.test('4. Structured approval modes satisfy dangerous tool gate', () => {
+    const model: SystemModel = {
+      system: 'approval-mode-test',
+      version: '1.0',
+      agents: [
+        {
+          id: 'supervised-agent',
+          purpose: 'Testing',
+          autonomy: 'supervised',
+          allowed_tools: ['issue-refund']
+        }
+      ],
+      tools: [
+        {
+          id: 'issue-refund',
+          type: 'payment_api',
+          risk: 'critical',
+          approval: {
+            mode: 'human'
+          }
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(model);
+    const hasUnapprovedDangerous = findings.some(f => f.id.includes('R-002'));
+    assert.strictEqual(hasUnapprovedDangerous, false, 'Structured tool approval modes should satisfy R-002');
   });
 
 });

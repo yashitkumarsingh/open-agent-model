@@ -61,6 +61,10 @@ mcp_servers:
       - send-triage-summary
 
 data_classes:
+  - id: patient_symptoms
+    sensitivity: high
+    classification: pii
+
   - id: patient_pii
     sensitivity: high
     classification: pii

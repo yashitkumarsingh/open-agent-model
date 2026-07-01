@@ -1,17 +1,17 @@
 # OpenAgentModel (oam)
 
 > **Model your agents before they act.**
-> Architecture, risk, and governance readiness for production AI Agent systems.
+> An open Agent-BOM, threat model, and CI policy gate for AI agents and MCP-connected systems.
 
 ---
 
 [![SARIF Validation](https://img.shields.io/badge/CI--Gate-SARIF-blueviolet?style=for-the-badge)](docs/cli-usage.md)
-[![OWASP Mapping](https://img.shields.io/badge/Security-OWASP%20Agentic-red?style=for-the-badge)](docs/concepts.md)
+[![OWASP Mapping](https://img.shields.io/badge/Security-OWASP%20LLM%202025-red?style=for-the-badge)](docs/concepts.md)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](LICENSE)
 
-OpenAgentModel is an open-source modeling language and visual tool for designing, simulating, auditing, and governing AI agent systems before they reach production. 
+OpenAgentModel is an open-source modeling language for declaring an Agent-BOM and enforcing static security checks before AI agent systems reach production.
 
-Rather than checking runtime behaviors alone, OpenAgentModel allows security, risk, and engineering teams to declare agent configurations statically, enforce referential completeness, evaluate loop/escalation risks, and gate CI/CD PRs before they hit staging.
+Rather than checking runtime behaviors alone, OpenAgentModel allows security, risk, and engineering teams to declare agents, tools, models, identities, MCP servers, data classes, approvals, and policies statically. The CLI validates referential completeness, evaluates loop/escalation risks, exports SARIF, and blocks risky pull requests in CI.
 
 ---
 
@@ -20,11 +20,11 @@ Rather than checking runtime behaviors alone, OpenAgentModel allows security, ri
 To keep the documentation clean and developer-friendly, the specifications are divided into logical, modular guides:
 
 1. **[Core Concepts & Threat Models](docs/concepts.md)**
-   - Explains the model-first wedge, security context flows, and visual representations.
-   - Maps vulnerabilities to the **OWASP Agentic Top 10 (2026)** (A2A privilege escalation, loop overflows, memory poisoning, PII exfiltration).
+   - Explains the model-first wedge, security context flows, and Agent-BOM contract.
+   - Maps checks to **OWASP Top 10 for LLM Applications 2025** and emerging agentic application security patterns.
 2. **[CLI Installation & Usage Guide](docs/cli-usage.md)**
    - Walkthrough of standard commands (`init`, `validate`, `diagram`, `risk`, `report`).
-   - Detailed instructions for setting up GitHub Actions blocking gates via **SARIF** logs.
+   - Schema field reference and GitHub Actions blocking gates via **SARIF** logs.
 3. **[10 Diverse Reference Scenarios](docs/examples.md)**
    - Copy-pasteable configuration templates matching e-commerce, healthcare, code evaluation, smart home, and supply chain topologies.
 4. **[Enterprise v1.0 Roadmap](docs/roadmap.md)**
@@ -81,4 +81,3 @@ jobs:
       - name: Enforce Security Threshold
         run: oam risk -i agentmodel.yaml --fail-on high --sarif agent-risks.sarif
 ```
-

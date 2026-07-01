@@ -8,13 +8,14 @@ import { riskCommand } from './commands/risk.js';
 import { reportCommand } from './commands/report.js';
 import { importMcpCommand } from './commands/import-mcp.js';
 import { driftCommand } from './commands/drift.js';
+import { getPackageVersion } from './core/version.js';
 
 const program = new Command();
 
 program
   .name('oam')
   .description('OpenAgentModel CLI: Design-time and CI-time modelling and governance for AI Agent systems')
-  .version('0.1.0');
+  .version(getPackageVersion());
 
 program
   .command('init')

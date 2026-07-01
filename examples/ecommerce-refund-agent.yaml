@@ -66,6 +66,10 @@ mcp_servers:
       - update-customer-note
 
 data_classes:
+  - id: customer_messages
+    sensitivity: medium
+    classification: internal_data
+
   - id: customer_pii
     sensitivity: high
     classification: pii

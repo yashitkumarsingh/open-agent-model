@@ -27,6 +27,9 @@ jobs:
       - name: Compile TypeScript Compiler
         run: npm run build
 
+      - name: Run Test Suite
+        run: npm test
+
       - name: 1. Validate Model Syntax & Referential Linker
         run: |
           echo "Verifying syntax and resolving internal references..."
@@ -35,7 +38,7 @@ jobs:
       - name: 2. Enforce Security Risk Gate (Success Path)
         # Verify that our secure model file compiles and passes with exit code 0.
         run: |
-          echo "Scanning secure agent topology for OWASP Agentic vulnerabilities..."
+          echo "Scanning secure agent topology for OWASP LLM and agentic application risks..."
           node dist/index.js risk -i agentmodel.yaml --fail-on high --sarif agent-risks.sarif
 
       - name: 3. Verify Risk Scanner Detects Insecure Models (Failure Path)

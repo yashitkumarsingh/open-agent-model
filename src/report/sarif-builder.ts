@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { Finding } from '../risk-engine/rules.js';
 import { findLineNumber } from '../core/locator.js';
+import { getPackageVersion } from '../core/version.js';
 
 export function generateSarifReport(findings: Finding[], modelPath: string): string {
   let rawContent = '';
@@ -35,7 +36,7 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
       text: r.name
     },
     fullDescription: {
-      text: `OWASP Agentic Mapping: ${r.desc}`
+      text: `OWASP LLM/Application Security Mapping: ${r.desc}`
     }
   }));
 
@@ -95,8 +96,8 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
         tool: {
           driver: {
             name: 'OpenAgentModel',
-            informationUri: 'https://github.com/open-agent-model/open-agent-model',
-            version: '0.2.1',
+            informationUri: 'https://github.com/yashitkumarsingh/open-agent-model',
+            version: getPackageVersion(),
             rules: sarifRules
           }
         },

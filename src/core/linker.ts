@@ -1,4 +1,4 @@
-import { SystemModel } from './model.js';
+import { DeclarativePolicy, SystemModel } from './model.js';
 
 export function linkAndValidateSystemModel(data: SystemModel): string[] {
   const errors: string[] = [];
@@ -7,28 +7,38 @@ export function linkAndValidateSystemModel(data: SystemModel): string[] {
   const tools = data.tools || [];
   const mcpServers = data.mcp_servers || [];
   const dataClasses = data.data_classes || [];
+  const models = data.models || [];
+  const identities = data.identities || [];
+
+  const addUniqueIds = (label: string, records: { id?: string }[]): Set<string> => {
+    const ids = new Set<string>();
+    const seen = new Set<string>();
+
+    records.forEach((record) => {
+      if (!record.id) return;
+      if (seen.has(record.id)) {
+        errors.push(`Duplicate ID Error: ${label} id '${record.id}' is declared more than once.`);
+      }
+      seen.add(record.id);
+      ids.add(record.id);
+    });
+
+    return ids;
+  };
 
   // 1. Gather all declared keys
-  const agentIds = new Set<string>();
-  agents.forEach((a) => {
-    if (a.id) {
-      agentIds.add(a.id);
-    }
-  });
-
-  const toolIds = new Set<string>();
-  tools.forEach((t) => {
-    if (t.id) {
-      toolIds.add(t.id);
-    }
-  });
-
-  const dataClassIds = new Set<string>();
-  dataClasses.forEach((dc) => {
-    if (dc.id) {
-      dataClassIds.add(dc.id);
-    }
-  });
+  const agentIds = addUniqueIds('Agent', agents);
+  const toolIds = addUniqueIds('Tool', tools);
+  const dataClassIds = addUniqueIds('Data class', dataClasses);
+  addUniqueIds('MCP server', mcpServers);
+  addUniqueIds('Model', models);
+  const identityIds = addUniqueIds('Identity', identities);
+  addUniqueIds(
+    'Policy',
+    (data.policies || []).filter(
+      (policy): policy is DeclarativePolicy => typeof policy === 'object' && policy !== null && typeof policy.id === 'string'
+    )
+  );
 
   // 2. Validate Agent cross-references
   agents.forEach((agent) => {
@@ -71,8 +81,7 @@ export function linkAndValidateSystemModel(data: SystemModel): string[] {
     // Validate memory contains data classes
     if (agent.memory && agent.memory.contains) {
       agent.memory.contains.forEach((dcId) => {
-        if (!dataClassIds.has(dcId) && dcId !== 'customer_messages' && dcId !== 'patient_symptoms') {
-          // Allow default system messages if not explicitly declared, but otherwise check
+        if (!dataClassIds.has(dcId)) {
           errors.push(`Referential Error: Agent '${agent.id}' memory contains data_class '${dcId}' which is not defined in 'data_classes'.`);
         }
       });
@@ -88,9 +97,36 @@ export function linkAndValidateSystemModel(data: SystemModel): string[] {
         }
       });
     }
+
+    if (tool.auth_identity && !identityIds.has(tool.auth_identity)) {
+      errors.push(`Referential Error: Tool '${tool.id}' references auth_identity '${tool.auth_identity}' which is not defined in 'identities'.`);
+    }
   });
 
-  // 4. Validate MCP exposed tools references
+  // 4. Validate Model allowed agent references
+  models.forEach((model) => {
+    if (model.allowed_for) {
+      model.allowed_for.forEach((agentId) => {
+        if (!agentIds.has(agentId)) {
+          errors.push(`Referential Error: Model '${model.id}' references allowed_for agent '${agentId}' which is not defined in 'agents'.`);
+        }
+      });
+    }
+  });
+
+  // 5. Validate Identity metadata
+  identities.forEach((identity) => {
+    if (identity.expires_at) {
+      const expiryMs = Date.parse(identity.expires_at);
+      if (Number.isNaN(expiryMs)) {
+        errors.push(`Semantic Error: Identity '${identity.id}' has expires_at '${identity.expires_at}' which is not a valid date-time string.`);
+      } else if (expiryMs <= Date.now()) {
+        errors.push(`Semantic Error: Identity '${identity.id}' has expired credentials at '${identity.expires_at}'.`);
+      }
+    }
+  });
+
+  // 6. Validate MCP exposed tools references
   mcpServers.forEach((mcp) => {
     if (mcp.exposes) {
       mcp.exposes.forEach((toolId) => {

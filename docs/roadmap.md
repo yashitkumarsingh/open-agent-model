@@ -6,6 +6,8 @@ This document describes the long-term vision, v1.0 enterprise targets, and ongoi
 
 ## Technical Specifications v1.0 Roadmap
 
+The near-term product wedge is an Agent-BOM plus CI policy gate that sits above existing agent frameworks rather than replacing them.
+
 The development checklist outlines priorities for turning design-time models into runtime gateways:
 
 ### 1. Static Framework Code Scanners
@@ -31,3 +33,9 @@ policies:
   - assert: "mcp.trust_level == 'internal' if data_class.classification == 'credentials'"
 ```
 This decouples risk evaluation logic entirely from the compiler engine, allowing enterprise teams to distribute custom risk profiles.
+
+### 5. Importers and Runtime Adapters
+- **MCP tool metadata import** from live server manifests.
+- **LangGraph and CrewAI importers** that emit `agentmodel.yaml`.
+- **OpenTelemetry GenAI/MCP adapters** that map standard semantic-convention attributes into the current drift analyzer.
+- **Baseline risk diffing** for pull requests so CI can explain exactly which agent/tool path changed.

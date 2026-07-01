@@ -6,6 +6,7 @@ import {
   DataClass 
 } from '../core/model.js';
 import { evaluatePolicies } from './policy-evaluator.js';
+import { hasHumanApproval } from './approval.js';
 
 export interface Finding {
   id: string;
@@ -89,7 +90,7 @@ const a2aPrivilegeEscalationRule: Rule = {
         delegateTools.forEach((toolId: string) => {
           if (!agentTools.has(toolId)) {
             const tool = toolMap.get(toolId);
-            if (tool && (tool.risk === 'high' || tool.risk === 'critical' || tool.type === 'payment_api' || tool.requires_human_approval === true)) {
+            if (tool && (tool.risk === 'high' || tool.risk === 'critical' || tool.type === 'payment_api' || hasHumanApproval(delegate, tool, toolId))) {
               findings.push({
                 id: 'R-001-ESC',
                 title: 'A2A Privilege Escalation Path Detected',
@@ -178,18 +179,14 @@ const unapprovedDangerousToolRule: Rule = {
             toolId.toLowerCase().includes('refund');
 
           if (isDangerous) {
-            const toolRequiresApproval = tool.requires_human_approval === true;
-            const agentAutonomyAllowsDirect = agent.autonomy !== 'human-approval-required';
-            const agentApprovesTool = agent.approval_required_for?.includes(toolId);
-
-            if (!toolRequiresApproval && agentAutonomyAllowsDirect && !agentApprovesTool) {
+            if (!hasHumanApproval(agent, tool, toolId)) {
               findings.push({
                 id: 'R-002-AUT',
                 title: 'Autonomous Execution of Dangerous Tool',
                 severity: 'high',
                 agentId: agent.id,
                 description: `Agent '${agent.id}' can execute high-risk/payment tool '${toolId}' without human approval or validation.`,
-                recommendation: `Require human approval for tool '${toolId}' by setting 'requires_human_approval: true' or adding it to the agent's 'approval_required_for' list.`,
+                recommendation: `Require human approval for tool '${toolId}' by setting 'requires_human_approval: true', setting 'approval.mode: human', or adding it to the agent's 'approval_required_for' list.`,
                 owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval',
                 context: { toolId }
               });

@@ -16,7 +16,7 @@ graph TD
   B -->|oam validate| C{Semantic Linker}
   C -->|Failed| D[Print Broken References]
   C -->|Passed| E[Strong AST]
-  E -->|oam risk| F[Modular Rules Engine]
+  E -->|oam risk| F[Static Rules and Experimental Policy Checks]
   E -->|oam diagram| G[Custom SVG Renderer]
   F -->|Policy-as-Code| H[Generate OPA Rego / AGT Configs]
   F -->|Static Scan| I[Export SARIF Logs to CI]
@@ -64,15 +64,17 @@ graph LR
   style B fill:#1e1b4b,stroke:#8b5cf6
 ```
 
+`oam` maps findings to the OWASP Top 10 for LLM Applications 2025 and emerging agentic application security patterns. It does not claim coverage of an official future agent-specific OWASP list.
+
 ### Key Risk Categories Audited by `oam`:
 
-1. **A2A Privilege Escalation (OWASP-10)**: 
+1. **A2A Privilege Escalation (Emerging Agentic Pattern)**: 
    If Agent A can delegate to Agent B, but B has access to high-risk tools (e.g. payout APIs) that A is blocked from calling, Agent A can escalate privileges indirectly by calling B.
-2. **Excessive Agency & Autonomous Tool Runs (OWASP-8)**: 
-   Destructive or financial tools must require physical human approval gates (`requires_human_approval: true`). Agents with write tool permissions must not run with fully autonomous autonomy levels unless explicitly verified.
-3. **Indirect Prompt Injection (OWASP-1)**: 
+2. **Excessive Agency & Autonomous Tool Runs (OWASP LLM08:2025)**: 
+   Destructive or financial tools must require human approval gates (`requires_human_approval: true`, `approval.mode: human`, `approval.mode: multi-party`, or agent-level `approval_required_for`). Agents with write tool permissions must not run with fully autonomous autonomy levels unless explicitly verified.
+3. **Indirect Prompt Injection (OWASP LLM01:2025)**: 
    Untrusted inputs read by tool execution layers (e.g. database logs) can feed instructions back to the LLM agent, hijacking the agent's prompt to bypass security limits.
-4. **Memory Poisoning (OWASP-3)**: 
+4. **Memory Poisoning (OWASP LLM03:2025)**: 
    If an agent can write directly to its vector memory stores without poisoning safeguards, malicious instructions can be stored permanently, polluting future retrieval cycles.
-5. **PII Exfiltration (OWASP-6)**: 
+5. **PII Exfiltration (OWASP LLM02:2025)**: 
    Agents touching sensitive data classes (classified as PII or credentials) must not route commands or payloads to external or untrusted MCP servers.

@@ -3,16 +3,16 @@
 This document provides copy-pasteable YAML definitions and reference architectures for 10 diverse agentic configurations.
 
 ### Directory of Reference Configurations
-- **[ecommerce-refund-agent.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/ecommerce-refund-agent.yaml)** - E-Commerce Payout Gates & Financial Risks
-- **[healthcare-triage-agent.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/healthcare-triage-agent.yaml)** - HIPAA Patient Data Privacy & Vector Memory writes
-- **[coding-agent.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/coding-agent.yaml)** - Software Coding Agent CLI Command Restrictions
-- **[portfolio-trader.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/portfolio-trader.yaml)** - Financial Portfolio Trader Budget & Loop caps
-- **[support-router.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/support-router.yaml)** - A2A Support Router Privilege Escalation
-- **[smart-home-iot.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/smart-home-iot.yaml)** - Smart Home IoT Physical lock actions
-- **[legal-analyst.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/legal-analyst.yaml)** - Legal Document Analyst Read-only memory audits
-- **[supply-chain.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/supply-chain.yaml)** - Supply Chain Logistics Partner MCP trust boundaries
-- **[ai-search-rag.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/ai-search-rag.yaml)** - Search web crawler vector memory poisoning checks
-- **[enterprise-recruiter.yaml](file:///Users/yashitkumarsingh/dev/open-agent-model/examples/enterprise-recruiter.yaml)** - HR background check candidate PII isolations
+- **[ecommerce-refund-agent.yaml](../examples/ecommerce-refund-agent.yaml)** - E-Commerce Payout Gates & Financial Risks
+- **[healthcare-triage-agent.yaml](../examples/healthcare-triage-agent.yaml)** - HIPAA Patient Data Privacy & Vector Memory writes
+- **[coding-agent.yaml](../examples/coding-agent.yaml)** - Software Coding Agent CLI Command Restrictions
+- **[portfolio-trader.yaml](../examples/portfolio-trader.yaml)** - Financial Portfolio Trader Budget & Loop caps
+- **[support-router.yaml](../examples/support-router.yaml)** - A2A Support Router Privilege Escalation
+- **[smart-home-iot.yaml](../examples/smart-home-iot.yaml)** - Smart Home IoT Physical lock actions
+- **[legal-analyst.yaml](../examples/legal-analyst.yaml)** - Legal Document Analyst Read-only memory audits
+- **[supply-chain.yaml](../examples/supply-chain.yaml)** - Supply Chain Logistics Partner MCP trust boundaries
+- **[ai-search-rag.yaml](../examples/ai-search-rag.yaml)** - Search web crawler vector memory poisoning checks
+- **[enterprise-recruiter.yaml](../examples/enterprise-recruiter.yaml)** - HR background check candidate PII isolations
 
 ---
 

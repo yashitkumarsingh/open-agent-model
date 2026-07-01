@@ -356,4 +356,63 @@ data_classes:
     }
   });
 
+  await t.test('8. Tool source.mcp_server must reference a declared mcp_servers entry', () => {
+    const tempFile = path.resolve(__dirname, 'temp-source-linker.yaml');
+
+    // Case A: source.mcp_server points to an undeclared server → must fail
+    const missingServerYaml = `
+system: source-test
+version: "1.0"
+agents:
+  - id: agent-a
+    purpose: "Test"
+    allowed_tools: [search-tool]
+tools:
+  - id: search-tool
+    type: api
+    source:
+      kind: mcp
+      mcp_server: ghost-mcp
+mcp_servers:
+  - id: real-mcp
+    trust_level: internal
+`;
+    fs.writeFileSync(tempFile, missingServerYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'source.mcp_server pointing to undeclared server should fail validation');
+      const errorText = res.errors?.join('\n') ?? '';
+      assert.match(errorText, /source\.mcp_server.*ghost-mcp/, 'Error should name the missing mcp_server reference');
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    // Case B: source.kind='mcp' with no mcp_server at all → must fail
+    const missingFieldYaml = `
+system: source-test-b
+version: "1.0"
+agents:
+  - id: agent-b
+    purpose: "Test"
+    allowed_tools: [lookup-tool]
+tools:
+  - id: lookup-tool
+    type: api
+    source:
+      kind: mcp
+mcp_servers:
+  - id: real-mcp
+    trust_level: internal
+`;
+    fs.writeFileSync(tempFile, missingFieldYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'source.kind=mcp without mcp_server should fail validation');
+      const errorText = res.errors?.join('\n') ?? '';
+      assert.match(errorText, /source\.kind.*mcp.*missing.*source\.mcp_server|source\.mcp_server/, 'Error should flag the missing mcp_server field');
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
 });

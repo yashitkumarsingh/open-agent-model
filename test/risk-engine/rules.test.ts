@@ -7,7 +7,7 @@ test('Risk Engine Rules Test Suite', async (t) => {
   await t.test('0. Rules registry exposes stable modular rule IDs', () => {
     assert.deepStrictEqual(
       RULES_REGISTRY.map((rule) => rule.id),
-      ['R-001', 'R-002', 'R-003', 'R-004', 'R-005', 'R-006', 'R-007', 'R-008', 'R-009', 'R-010', 'R-011', 'R-012', 'R-013', 'R-014'],
+      ['R-001', 'R-002', 'R-003', 'R-004', 'R-005', 'R-006', 'R-007', 'R-008', 'R-009', 'R-010', 'R-011', 'R-012', 'R-013', 'R-014', 'R-015'],
       'Rules registry should preserve the stable rule order and IDs'
     );
   });
@@ -367,6 +367,69 @@ test('Risk Engine Rules Test Suite', async (t) => {
 
     assert.strictEqual(hasModelRetentionFinding, false, 'Explicit model binding should prevent overflagging other allowed models');
     assert.strictEqual(hasModelRiskFinding, false, 'Explicit model binding should only analyze the selected model risk');
+  });
+
+  await t.test('7. R-015 flags suspicious input_schema parameter names', () => {
+    const model: SystemModel = {
+      system: 'input-schema-test',
+      version: '1.0',
+      agents: [
+        { id: 'agent-a', purpose: 'Test', allowed_tools: ['run-script', 'safe-lookup'] }
+      ],
+      tools: [
+        {
+          id: 'run-script',
+          type: 'api',
+          risk: 'medium', // Understated given the parameter names below
+          input_schema: {
+            type: 'object',
+            properties: {
+              command: { type: 'string' },
+              shell: { type: 'string' }
+            }
+          }
+        },
+        {
+          id: 'safe-lookup',
+          type: 'api',
+          risk: 'low',
+          input_schema: {
+            type: 'object',
+            properties: {
+              search_term: { type: 'string' }
+            }
+          }
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(model);
+
+    // run-script should be flagged for suspicious input params
+    const hasDangerousInput = findings.some(f => f.id === 'R-015-INP' && f.agentId === 'run-script');
+    assert.strictEqual(hasDangerousInput, true, 'R-015 should flag tools with command/shell input params at medium risk');
+
+    // safe-lookup should NOT be flagged
+    const flaggedSafeTool = findings.some(f => f.id === 'R-015-INP' && f.agentId === 'safe-lookup');
+    assert.strictEqual(flaggedSafeTool, false, 'R-015 should not flag benign search_term parameters');
+
+    // Already-declared high/critical risk tools should not be double-flagged
+    const highRiskModel: SystemModel = {
+      system: 'high-risk-test',
+      version: '1.0',
+      agents: [],
+      tools: [
+        {
+          id: 'known-dangerous',
+          type: 'api',
+          risk: 'critical', // Already declared critical — should not be flagged by R-015
+          input_schema: { type: 'object', properties: { command: { type: 'string' } } }
+        }
+      ]
+    };
+    const highRiskFindings = runRiskChecks(highRiskModel);
+    const doubleFlag = highRiskFindings.some(f => f.id === 'R-015-INP');
+    assert.strictEqual(doubleFlag, false, 'R-015 should not flag tools already declared as high or critical risk');
   });
 
 });

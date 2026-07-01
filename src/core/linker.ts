@@ -155,6 +155,16 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
         }
       }
     }
+
+    // Validate tool.source referential integrity when source.kind === 'mcp'
+    if (tool.source?.kind === 'mcp') {
+      const mcpServerIds = new Set(mcpServers.map((m) => m.id));
+      if (!tool.source.mcp_server) {
+        errors.push(`Semantic Error: Tool '${tool.id}' has source.kind 'mcp' but is missing source.mcp_server.`);
+      } else if (!mcpServerIds.has(tool.source.mcp_server)) {
+        errors.push(`Referential Error: Tool '${tool.id}' references source.mcp_server '${tool.source.mcp_server}' which is not defined in 'mcp_servers'.`);
+      }
+    }
   });
 
   // 4. Validate Model allowed agent references

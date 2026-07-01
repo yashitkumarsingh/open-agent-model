@@ -87,6 +87,27 @@ oam import-mcp -i agentmodel.yaml --mcp-id vendor-mcp --tools-file mcp-tools.jso
 
 Live MCP discovery is not implemented yet. `--tools-file` is required so the command does not silently import mock tools.
 
+The importer validates the tools file before mutating `agentmodel.yaml`, writes to a temp file, re-validates the transformed model, and only overwrites the original on a clean pass. This means a malformed tools file cannot corrupt the model.
+
+Imported tools automatically receive `source`, `input_schema`, and `annotations` from the MCP `tools/list` response:
+```json
+[
+  {
+    "name": "create-ticket",
+    "description": "Opens a support ticket.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "customer_id": { "type": "string" } }
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "idempotentHint": false,
+      "destructiveHint": false
+    }
+  }
+]
+```
+
 ### 7. Detect Runtime Drift (`oam drift`)
 Audits active runtime execution logs (OpenTelemetry trace spans) against design specifications to flag unauthorized tool execution or delegation pathways:
 ```bash
@@ -173,6 +194,32 @@ tools:
       max_calls_per_task: 1
 ```
 `auth_identity` must reference a declared identity. When `required_scopes` is present, the bound identity must grant every listed scope. Human approval can be declared with legacy `requires_human_approval: true`, structured `approval.mode: human`, structured `approval.mode: multi-party`, or an agent-level `approval_required_for` entry.
+
+#### MCP-Imported Tool Fields
+When a tool is imported via `oam import-mcp`, the following additional fields are preserved in `agentmodel.yaml`:
+```yaml
+tools:
+  - id: create-ticket
+    type: api
+    description: Opens a support ticket via the vendor MCP server.
+    risk: medium
+    source:
+      kind: mcp
+      mcp_server: vendor-mcp       # Must reference a declared mcp_servers entry
+      original_name: create-ticket  # As returned by the MCP tools/list response
+    input_schema:
+      type: object
+      properties:
+        customer_id:
+          type: string
+    annotations:
+      destructive_hint: false   # True if tool has destructive side effects
+      read_only_hint: false     # True if tool is non-mutating
+      idempotent_hint: true     # True if repeated calls produce the same result
+```
+`source.mcp_server` must reference a declared `mcp_servers` entry. When `source.kind` is `mcp` but `source.mcp_server` is missing or points to an undeclared server, `oam validate` will fail with a referential error.
+
+Annotations from MCP servers are treated as **advisory signals**. `destructive_hint: true` strengthens risk analysis. `read_only_hint` is only honoured from `internal` sources — annotations from `external` or `untrusted` MCP servers are not sufficient on their own to reduce risk severity.
 
 ### Built-In Governance Rules
 `oam risk` includes static checks for:

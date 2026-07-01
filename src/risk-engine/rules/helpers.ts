@@ -13,22 +13,45 @@ export function buildDataClassMap(data: SystemModel): Map<string, DataClass> {
 }
 
 export function isHighImpactTool(tool: Tool): boolean {
-  return (
+  // Explicit structural signals always win
+  if (
     tool.risk === 'critical' ||
     tool.type === 'payment_api' ||
     tool.side_effect === 'payout' ||
     tool.side_effect === 'system_alteration'
-  );
+  ) {
+    return true;
+  }
+  // MCP destructive_hint as an additive advisory signal (does not override)
+  if (tool.annotations?.destructive_hint === true) {
+    return true;
+  }
+  return false;
 }
 
 export function isSideEffectingTool(tool: Tool): boolean {
-  return (
+  // Explicit structural signals always win
+  if (
     tool.type === 'command_line' ||
     tool.type === 'write_file' ||
     tool.side_effect === 'external_write' ||
     tool.side_effect === 'payout' ||
     tool.side_effect === 'system_alteration'
-  );
+  ) {
+    return true;
+  }
+  // MCP destructive_hint as additive advisory signal
+  if (tool.annotations?.destructive_hint === true) {
+    return true;
+  }
+  // read_only_hint can reduce false positives ONLY when there is no explicit
+  // side_effect override AND the tool has no structural risk signals above.
+  // We deliberately do NOT honour read_only_hint from external/untrusted sources
+  // since those annotations cannot be verified.
+  if (tool.annotations?.read_only_hint === true && tool.source?.kind !== 'mcp') {
+    return false;
+  }
+  return false;
 }
 
 export function collectAgentDataClasses(agent: Agent, toolMap: Map<string, Tool>, dataClassMap: Map<string, DataClass>): DataClass[] {

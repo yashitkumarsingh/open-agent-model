@@ -12,6 +12,7 @@ import { infiniteLoopsRule } from './retry-loop.js';
 import { memoryPoisoningRule } from './memory-poisoning.js';
 import { modelRetentionDataRule } from './model-retention-data.js';
 import { piiExternalMcpRule } from './pii-external-mcp.js';
+import { dangerousInputSchemaRule } from './dangerous-input-schema.js';
 import { unapprovedDangerousToolRule } from './dangerous-tool.js';
 import { Finding, Rule } from './types.js';
 
@@ -31,7 +32,8 @@ export const RULES_REGISTRY: Rule[] = [
   autonomousSideEffectToolRule,
   modelRetentionDataRule,
   delegationCycleRule,
-  customPoliciesRule
+  customPoliciesRule,
+  dangerousInputSchemaRule
 ];
 
 export function runRiskChecks(data: SystemModel): Finding[] {

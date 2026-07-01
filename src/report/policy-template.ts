@@ -74,8 +74,8 @@ This document contains generated runtime policy rules and security recommendatio
 
 ---
 
-## 1. Open Policy Agent (OPA) Rego Policy
-The following OPA policies can be used in your gateway or runtime agent middleware to intercept tool-calling decisions and block hazardous execution paths.
+## 1. Rego-Style Policy Examples
+The following Rego-style examples can be adapted for Open Policy Agent or runtime agent middleware to intercept tool-calling decisions and block hazardous execution paths.
 
 \`\`\`rego
 ${rego}

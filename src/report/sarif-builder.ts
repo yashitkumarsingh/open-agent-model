@@ -3,6 +3,11 @@ import { Finding } from '../risk-engine/rules.js';
 import { findLineNumber } from '../core/locator.js';
 import { getPackageVersion } from '../core/version.js';
 
+function getSarifRuleId(findingId: string): string {
+  const match = findingId.match(/^R-\d+(?:-[A-Z0-9]+)*/);
+  return match ? match[0] : 'R-GENERIC';
+}
+
 export function generateSarifReport(findings: Finding[], modelPath: string): string {
   let rawContent = '';
   try {
@@ -14,11 +19,7 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
   const rulesMap = new Map<string, { id: string; name: string; desc: string }>();
   
   findings.forEach((f) => {
-    let ruleId = 'R-GENERIC';
-    const match = f.id.match(/R-\d+/);
-    if (match) {
-      ruleId = match[0];
-    }
+    const ruleId = getSarifRuleId(f.id);
     
     if (!rulesMap.has(ruleId)) {
       rulesMap.set(ruleId, {
@@ -41,11 +42,7 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
   }));
 
   const sarifResults = findings.map((f) => {
-    let ruleId = 'R-GENERIC';
-    const match = f.id.match(/R-\d+/);
-    if (match) {
-      ruleId = match[0];
-    }
+    const ruleId = getSarifRuleId(f.id);
 
     let level = 'warning';
     if (f.severity === 'critical') level = 'error';

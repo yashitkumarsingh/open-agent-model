@@ -265,16 +265,70 @@ test('Risk Engine Rules Test Suite', async (t) => {
     const ids = new Set(findings.map((finding) => finding.id));
 
     assert.strictEqual(ids.has('R-006-AUTH'), true, 'High-impact tools without auth identity should be flagged');
-    assert.strictEqual(ids.has('R-006-RATE'), true, 'High-impact tools without rate limit should be flagged');
+    assert.strictEqual(ids.has('R-006-SCOPES'), true, 'High-impact tools without required scopes should be flagged');
     assert.strictEqual(ids.has('R-006-OWNER'), true, 'Ownerless identities used by high-impact tools should be flagged');
-    assert.strictEqual(ids.has('R-006-APPROVER'), true, 'Human approval without approver role should be flagged');
-    assert.strictEqual(ids.has('R-006-APPROVAL-EXPIRY'), true, 'Missing or long approval expiry should be flagged');
-    assert.strictEqual(ids.has('R-006-MCP-SIDE-EFFECT'), true, 'External MCP write/payout exposure should be flagged');
-    assert.strictEqual(ids.has('R-006-MODEL-RETENTION'), true, 'PII handling with retention-enabled model should be flagged');
-    assert.strictEqual(ids.has('R-006-MODEL-RISK'), true, 'High-risk model with high-sensitivity data should be flagged');
-    assert.strictEqual(ids.has('R-006-ALLOW-DENY'), true, 'Allowed and denied same tool should be flagged');
-    assert.strictEqual(ids.has('R-006-DELEGATION-CYCLE'), true, 'Delegation cycles should be flagged');
-    assert.strictEqual(ids.has('R-006-AUTONOMOUS-WRITE'), true, 'Autonomous command/write tools should be flagged');
+    assert.strictEqual(ids.has('R-007-RATE'), true, 'High-impact tools without rate limit should be flagged');
+    assert.strictEqual(ids.has('R-008-APPROVER'), true, 'Human approval without approver role should be flagged');
+    assert.strictEqual(ids.has('R-008-APPROVAL-EXPIRY'), true, 'Missing or long approval expiry should be flagged');
+    assert.strictEqual(ids.has('R-009-MCP-SIDE-EFFECT'), true, 'External MCP write/payout exposure should be flagged');
+    assert.strictEqual(ids.has('R-012-MODEL-RETENTION'), true, 'PII handling with retention-enabled model should be flagged');
+    assert.strictEqual(ids.has('R-012-MODEL-RISK'), true, 'High-risk model with high-sensitivity data should be flagged');
+    assert.strictEqual(ids.has('R-010-ALLOW-DENY'), true, 'Allowed and denied same tool should be flagged');
+    assert.strictEqual(ids.has('R-013-DELEGATION-CYCLE'), true, 'Delegation cycles should be flagged');
+    assert.strictEqual(ids.has('R-011-AUTONOMOUS-WRITE'), true, 'Autonomous command/write tools should be flagged');
+  });
+
+  await t.test('6. Explicit agent model binding limits model data risk analysis', () => {
+    const model: SystemModel = {
+      system: 'explicit-model-binding-test',
+      version: '1.0',
+      models: [
+        {
+          id: 'safe-model',
+          provider: 'internal-ai',
+          allowed_for: ['pii-agent'],
+          data_retention: 'disabled',
+          risk: 'medium'
+        },
+        {
+          id: 'risky-allowed-model',
+          provider: 'external-ai',
+          allowed_for: ['pii-agent'],
+          data_retention: 'enabled',
+          risk: 'high'
+        }
+      ],
+      agents: [
+        {
+          id: 'pii-agent',
+          purpose: 'Handle PII',
+          model: 'safe-model',
+          allowed_tools: ['pii-reader']
+        }
+      ],
+      tools: [
+        {
+          id: 'pii-reader',
+          type: 'api',
+          risk: 'low',
+          data_classes: ['customer-pii']
+        }
+      ],
+      data_classes: [
+        {
+          id: 'customer-pii',
+          sensitivity: 'critical',
+          classification: 'pii'
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(model);
+    const hasModelRetentionFinding = findings.some((finding) => finding.id === 'R-012-MODEL-RETENTION');
+    const hasModelRiskFinding = findings.some((finding) => finding.id === 'R-012-MODEL-RISK');
+
+    assert.strictEqual(hasModelRetentionFinding, false, 'Explicit model binding should prevent overflagging other allowed models');
+    assert.strictEqual(hasModelRiskFinding, false, 'Explicit model binding should only analyze the selected model risk');
   });
 
 });

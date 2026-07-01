@@ -768,7 +768,7 @@ export function generateHtmlReport(
       <div class="panel">
         <h2>🛡 Generated Policies & Guardrail Code</h2>
         <p style="font-size: 13.5px; color: #cbd5e1; margin-bottom: 20px;">
-          Copy and import these Rego rules into your runtime gateway (e.g. Open Policy Agent) to enforce these boundaries during execution.
+          Adapt these Rego-style examples for your runtime gateway or policy engine to enforce these boundaries during execution.
         </p>
         
         <pre><code id="policy-code">${generateRegoPolicy()}</code></pre>

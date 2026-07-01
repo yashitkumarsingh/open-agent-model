@@ -7,7 +7,7 @@ This document describes how to install, configure, and execute the **OpenAgentMo
 ## Installation
 
 ### Prerequisites
-- Node.js (v20+ or v22+)
+- Node.js 22.14.0. This repo includes `.nvmrc` and `.node-version`.
 - npm
 
 ### Local Build Setup
@@ -15,6 +15,7 @@ Clone the repository and install packages:
 ```bash
 git clone https://github.com/yashitkumarsingh/open-agent-model.git
 cd open-agent-model
+nvm use
 npm install
 npm run build
 ```
@@ -66,7 +67,7 @@ oam report -i agentmodel.yaml -d reports/
 Generated outputs in the directory:
 - `agent-map.svg` (Architecture map)
 - `agent-bom.json` (Structured ABOM)
-- `policy-recommendations.md` (Open Policy Agent Rego codes)
+- `policy-recommendations.md` (policy recommendations / Rego-style examples)
 - `agent-risks.sarif` (SARIF JSON logs)
 - `agent-risk-report.html` (Interactive dark-mode dashboard)
 
@@ -164,7 +165,8 @@ tools:
 - PII crossing external or untrusted MCP boundaries.
 - Memory write without poisoning protection.
 - Missing retry or loop protection.
-- High-impact tools missing auth identity, owner, rate limits, approver role, or bounded approval expiry.
+- High-impact tools missing auth identity, required scopes, credential owner, or rate limits.
+- Human approval declarations missing approver role or bounded approval expiry.
 - External/untrusted MCP servers exposing payout, write, command, or system-altering tools.
 - Retention-enabled or high-risk models handling sensitive data.
 - Agents that allow and deny the same tool.

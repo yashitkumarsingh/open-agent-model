@@ -33,6 +33,52 @@ export interface Rule {
   check(data: SystemModel): Finding[];
 }
 
+function buildToolMap(data: SystemModel): Map<string, Tool> {
+  return new Map((data.tools || []).map((tool) => [tool.id, tool]));
+}
+
+function buildIdentityMap(data: SystemModel): Map<string, IdentityCatalogEntry> {
+  return new Map((data.identities || []).map((identity) => [identity.id, identity]));
+}
+
+function buildDataClassMap(data: SystemModel): Map<string, DataClass> {
+  return new Map((data.data_classes || []).map((dataClass) => [dataClass.id, dataClass]));
+}
+
+function isHighImpactTool(tool: Tool): boolean {
+  return (
+    tool.risk === 'critical' ||
+    tool.type === 'payment_api' ||
+    tool.side_effect === 'payout' ||
+    tool.side_effect === 'system_alteration'
+  );
+}
+
+function isSideEffectingTool(tool: Tool): boolean {
+  return (
+    tool.type === 'command_line' ||
+    tool.type === 'write_file' ||
+    tool.side_effect === 'external_write' ||
+    tool.side_effect === 'payout' ||
+    tool.side_effect === 'system_alteration'
+  );
+}
+
+function collectAgentDataClasses(agent: Agent, toolMap: Map<string, Tool>, dataClassMap: Map<string, DataClass>): DataClass[] {
+  const ids = new Set<string>();
+
+  (agent.allowed_tools || []).forEach((toolId) => {
+    const tool = toolMap.get(toolId);
+    (tool?.data_classes || []).forEach((dataClassId) => ids.add(dataClassId));
+  });
+
+  (agent.memory?.contains || []).forEach((dataClassId) => ids.add(dataClassId));
+
+  return Array.from(ids)
+    .map((dataClassId) => dataClassMap.get(dataClassId))
+    .filter((dataClass): dataClass is DataClass => dataClass !== undefined);
+}
+
 // 1. Rule: A2A Privilege Escalation (Transitive Multi-hop Delegation Checker)
 const a2aPrivilegeEscalationRule: Rule = {
   id: 'R-001',
@@ -370,66 +416,20 @@ const infiniteLoopsRule: Rule = {
   }
 };
 
-// 6. Rule: Governance metadata and boundary hardening
-const governanceHardeningRule: Rule = {
+// 6. Rule: High-impact tools must declare auth identity, scopes, and owned credentials
+const criticalToolAuthIdentityRule: Rule = {
   id: 'R-006',
-  name: 'Governance Metadata and Boundary Hardening',
+  name: 'Critical Tool Auth Identity',
   severity: 'high',
   owaspMapping: 'OWASP-8: Excessive Agency / Governance Control Failure',
   check(data: SystemModel): Finding[] {
     const findings: Finding[] = [];
-    const agents = data.agents || [];
-    const tools = data.tools || [];
-    const mcpServers = data.mcp_servers || [];
-    const dataClasses = data.data_classes || [];
-    const identities = data.identities || [];
-    const models = data.models || [];
+    const identityMap = buildIdentityMap(data);
 
-    const toolMap = new Map<string, Tool>();
-    tools.forEach((tool) => toolMap.set(tool.id, tool));
+    (data.tools || []).forEach((tool) => {
+      if (!isHighImpactTool(tool)) return;
 
-    const identityMap = new Map<string, IdentityCatalogEntry>();
-    identities.forEach((identity) => identityMap.set(identity.id, identity));
-
-    const dataClassMap = new Map<string, DataClass>();
-    dataClasses.forEach((dataClass) => dataClassMap.set(dataClass.id, dataClass));
-
-    const isHighImpactTool = (tool: Tool): boolean => {
-      return (
-        tool.risk === 'critical' ||
-        tool.type === 'payment_api' ||
-        tool.side_effect === 'payout' ||
-        tool.side_effect === 'system_alteration'
-      );
-    };
-
-    const isWriteLikeTool = (tool: Tool): boolean => {
-      return (
-        tool.type === 'command_line' ||
-        tool.type === 'write_file' ||
-        tool.side_effect === 'external_write' ||
-        tool.side_effect === 'payout' ||
-        tool.side_effect === 'system_alteration'
-      );
-    };
-
-    const collectAgentDataClasses = (agent: Agent): DataClass[] => {
-      const ids = new Set<string>();
-
-      (agent.allowed_tools || []).forEach((toolId) => {
-        const tool = toolMap.get(toolId);
-        (tool?.data_classes || []).forEach((dataClassId) => ids.add(dataClassId));
-      });
-
-      (agent.memory?.contains || []).forEach((dataClassId) => ids.add(dataClassId));
-
-      return Array.from(ids)
-        .map((dataClassId) => dataClassMap.get(dataClassId))
-        .filter((dataClass): dataClass is DataClass => dataClass !== undefined);
-    };
-
-    tools.forEach((tool) => {
-      if (isHighImpactTool(tool) && !tool.auth_identity) {
+      if (!tool.auth_identity) {
         findings.push({
           id: 'R-006-AUTH',
           title: 'High-Impact Tool Missing Auth Identity',
@@ -442,20 +442,20 @@ const governanceHardeningRule: Rule = {
         });
       }
 
-      if (isHighImpactTool(tool) && !tool.rate_limit) {
+      if (!tool.required_scopes || tool.required_scopes.length === 0) {
         findings.push({
-          id: 'R-006-RATE',
-          title: 'High-Impact Tool Missing Rate Limit',
+          id: 'R-006-SCOPES',
+          title: 'High-Impact Tool Missing Required Scopes',
           severity: 'high',
           agentId: 'system',
-          description: `Tool '${tool.id}' is high impact but does not define rate_limit.max_calls_per_task.`,
-          recommendation: `Set a conservative rate_limit.max_calls_per_task for '${tool.id}'.`,
-          owaspMapping: 'OWASP-4: Unbounded Consumption / Tool Abuse',
+          description: `Tool '${tool.id}' is high impact but does not declare required_scopes.`,
+          recommendation: `Set required_scopes for '${tool.id}' so least-privilege identity coverage is explicit and linkable.`,
+          owaspMapping: 'OWASP-8: Excessive Agency / Governance Control Failure',
           context: { toolId: tool.id }
         });
       }
 
-      if (tool.auth_identity && isHighImpactTool(tool)) {
+      if (tool.auth_identity) {
         const identity = identityMap.get(tool.auth_identity);
         if (identity && !identity.owner) {
           findings.push({
@@ -470,13 +470,57 @@ const governanceHardeningRule: Rule = {
           });
         }
       }
+    });
 
+    return findings;
+  }
+};
+
+// 7. Rule: High-impact tools must define rate limits
+const criticalToolRateLimitRule: Rule = {
+  id: 'R-007',
+  name: 'Critical Tool Rate Limit',
+  severity: 'high',
+  owaspMapping: 'OWASP-4: Unbounded Consumption / Tool Abuse',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+
+    (data.tools || []).forEach((tool) => {
+      if (isHighImpactTool(tool) && !tool.rate_limit) {
+        findings.push({
+          id: 'R-007-RATE',
+          title: 'High-Impact Tool Missing Rate Limit',
+          severity: 'high',
+          agentId: 'system',
+          description: `Tool '${tool.id}' is high impact but does not define rate_limit.max_calls_per_task.`,
+          recommendation: `Set a conservative rate_limit.max_calls_per_task for '${tool.id}'.`,
+          owaspMapping: 'OWASP-4: Unbounded Consumption / Tool Abuse',
+          context: { toolId: tool.id }
+        });
+      }
+    });
+
+    return findings;
+  }
+};
+
+// 8. Rule: Human approval declarations must be auditable and bounded
+const approvalGovernanceRule: Rule = {
+  id: 'R-008',
+  name: 'Approval Governance',
+  severity: 'high',
+  owaspMapping: 'OWASP-8: Excessive Agency / Governance Control Failure',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+
+    (data.tools || []).forEach((tool) => {
       const approvalMode = tool.approval?.mode;
       const hasHumanMode = approvalMode === 'human' || approvalMode === 'multi-party';
       const approvalExpirySeconds = tool.approval?.expiry_seconds;
+
       if (hasHumanMode && !tool.approval?.approver_role) {
         findings.push({
-          id: 'R-006-APPROVER',
+          id: 'R-008-APPROVER',
           title: 'Human Approval Missing Approver Role',
           severity: 'high',
           agentId: 'system',
@@ -489,7 +533,7 @@ const governanceHardeningRule: Rule = {
 
       if (hasHumanMode && approvalExpirySeconds === undefined) {
         findings.push({
-          id: 'R-006-APPROVAL-EXPIRY',
+          id: 'R-008-APPROVAL-EXPIRY',
           title: 'Human Approval Missing Expiry',
           severity: 'medium',
           agentId: 'system',
@@ -500,7 +544,7 @@ const governanceHardeningRule: Rule = {
         });
       } else if (hasHumanMode && typeof approvalExpirySeconds === 'number' && approvalExpirySeconds > 3600) {
         findings.push({
-          id: 'R-006-APPROVAL-EXPIRY',
+          id: 'R-008-APPROVAL-EXPIRY',
           title: 'Human Approval Expiry Too Long',
           severity: 'medium',
           agentId: 'system',
@@ -512,15 +556,29 @@ const governanceHardeningRule: Rule = {
       }
     });
 
-    mcpServers.forEach((mcp) => {
+    return findings;
+  }
+};
+
+// 9. Rule: External MCP boundaries must not expose side-effecting tools
+const externalMcpSideEffectRule: Rule = {
+  id: 'R-009',
+  name: 'External MCP Side Effect Boundary',
+  severity: 'critical',
+  owaspMapping: 'OWASP-6: Sensitive Information Disclosure / Excessive Agency',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+    const toolMap = buildToolMap(data);
+
+    (data.mcp_servers || []).forEach((mcp) => {
       const externalBoundary = mcp.trust_level === 'external' || mcp.trust_level === 'untrusted';
       if (!externalBoundary) return;
 
       (mcp.exposes || []).forEach((toolId) => {
         const tool = toolMap.get(toolId);
-        if (tool && isWriteLikeTool(tool)) {
+        if (tool && isSideEffectingTool(tool)) {
           findings.push({
-            id: 'R-006-MCP-SIDE-EFFECT',
+            id: 'R-009-MCP-SIDE-EFFECT',
             title: 'External MCP Exposes Write or Payout Tool',
             severity: 'critical',
             agentId: 'system',
@@ -533,14 +591,27 @@ const governanceHardeningRule: Rule = {
       });
     });
 
-    agents.forEach((agent) => {
+    return findings;
+  }
+};
+
+// 10. Rule: Agent tool allow/deny policy must be unambiguous
+const allowDenyConflictRule: Rule = {
+  id: 'R-010',
+  name: 'Allow Deny Tool Conflict',
+  severity: 'high',
+  owaspMapping: 'OWASP-8: Excessive Agency / Governance Control Failure',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+
+    (data.agents || []).forEach((agent) => {
       const allowedTools = new Set(agent.allowed_tools || []);
       const deniedTools = new Set(agent.denied_tools || []);
 
       allowedTools.forEach((toolId) => {
         if (deniedTools.has(toolId)) {
           findings.push({
-            id: 'R-006-ALLOW-DENY',
+            id: 'R-010-ALLOW-DENY',
             title: 'Agent Allows and Denies Same Tool',
             severity: 'high',
             agentId: agent.id,
@@ -551,33 +622,69 @@ const governanceHardeningRule: Rule = {
           });
         }
       });
+    });
 
-      if (agent.autonomy === 'autonomous') {
-        allowedTools.forEach((toolId) => {
-          const tool = toolMap.get(toolId);
-          if (tool && isWriteLikeTool(tool)) {
-            findings.push({
-              id: 'R-006-AUTONOMOUS-WRITE',
-              title: 'Autonomous Agent Can Invoke Write or Command Tool',
-              severity: 'critical',
-              agentId: agent.id,
-              description: `Autonomous agent '${agent.id}' can invoke side-effecting tool '${toolId}'.`,
-              recommendation: `Move '${agent.id}' to supervised/human-approval-required autonomy or remove '${toolId}' from allowed_tools.`,
-              owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval',
-              context: { toolId }
-            });
-          }
-        });
-      }
+    return findings;
+  }
+};
 
-      const agentDataClasses = collectAgentDataClasses(agent);
-      const candidateModels = models.filter((model) => model.id === agent.model || model.allowed_for?.includes(agent.id));
+// 11. Rule: Autonomous agents must not directly invoke side-effecting tools
+const autonomousSideEffectToolRule: Rule = {
+  id: 'R-011',
+  name: 'Autonomous Side Effect Tool',
+  severity: 'critical',
+  owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+    const toolMap = buildToolMap(data);
+
+    (data.agents || []).forEach((agent) => {
+      if (agent.autonomy !== 'autonomous') return;
+
+      (agent.allowed_tools || []).forEach((toolId) => {
+        const tool = toolMap.get(toolId);
+        if (tool && isSideEffectingTool(tool)) {
+          findings.push({
+            id: 'R-011-AUTONOMOUS-WRITE',
+            title: 'Autonomous Agent Can Invoke Write or Command Tool',
+            severity: 'critical',
+            agentId: agent.id,
+            description: `Autonomous agent '${agent.id}' can invoke side-effecting tool '${toolId}'.`,
+            recommendation: `Move '${agent.id}' to supervised/human-approval-required autonomy or remove '${toolId}' from allowed_tools.`,
+            owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval',
+            context: { toolId }
+          });
+        }
+      });
+    });
+
+    return findings;
+  }
+};
+
+// 12. Rule: Model retention and risk must match handled data classes
+const modelRetentionDataRule: Rule = {
+  id: 'R-012',
+  name: 'Model Retention Data Boundary',
+  severity: 'high',
+  owaspMapping: 'OWASP-6: Sensitive Information Disclosure',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+    const toolMap = buildToolMap(data);
+    const dataClassMap = buildDataClassMap(data);
+    const models = data.models || [];
+
+    (data.agents || []).forEach((agent) => {
+      const agentDataClasses = collectAgentDataClasses(agent, toolMap, dataClassMap);
+      const candidateModels = agent.model
+        ? models.filter((model) => model.id === agent.model)
+        : models.filter((model) => model.allowed_for?.includes(agent.id));
 
       candidateModels.forEach((model) => {
         agentDataClasses.forEach((dataClass) => {
           if (model.data_retention === 'enabled' && dataClass.classification === 'pii') {
             findings.push({
-              id: 'R-006-MODEL-RETENTION',
+              id: 'R-012-MODEL-RETENTION',
               title: 'Model Retention Enabled for PII-Handling Agent',
               severity: 'high',
               agentId: agent.id,
@@ -590,7 +697,7 @@ const governanceHardeningRule: Rule = {
 
           if ((model.risk === 'high' || model.risk === 'critical') && (dataClass.sensitivity === 'high' || dataClass.sensitivity === 'critical')) {
             findings.push({
-              id: 'R-006-MODEL-RISK',
+              id: 'R-012-MODEL-RISK',
               title: 'High-Risk Model Handles High-Sensitivity Data',
               severity: 'high',
               agentId: agent.id,
@@ -604,10 +711,22 @@ const governanceHardeningRule: Rule = {
       });
     });
 
-    const agentMap = new Map<string, Agent>();
-    agents.forEach((agent) => agentMap.set(agent.id, agent));
+    return findings;
+  }
+};
 
-    agents.forEach((agent) => {
+// 13. Rule: Agent delegation graph must not contain cycles
+const delegationCycleRule: Rule = {
+  id: 'R-013',
+  name: 'Delegation Cycle',
+  severity: 'high',
+  owaspMapping: 'OWASP-4: Execution Loops / Agent Delegation Cycle',
+  check(data: SystemModel): Finding[] {
+    const findings: Finding[] = [];
+    const agentMap = new Map<string, Agent>();
+    (data.agents || []).forEach((agent) => agentMap.set(agent.id, agent));
+
+    (data.agents || []).forEach((agent) => {
       const visited = new Set<string>();
       const stack = [...(agent.allowed_delegates || [])];
 
@@ -615,7 +734,7 @@ const governanceHardeningRule: Rule = {
         const delegateId = stack.pop()!;
         if (delegateId === agent.id) {
           findings.push({
-            id: 'R-006-DELEGATION-CYCLE',
+            id: 'R-013-DELEGATION-CYCLE',
             title: 'Delegation Cycle Detected',
             severity: 'high',
             agentId: agent.id,
@@ -639,9 +758,9 @@ const governanceHardeningRule: Rule = {
   }
 };
 
-// 7. Rule: Custom declared policies validation
+// 14. Rule: Custom declared policies validation
 const customPoliciesRule: Rule = {
-  id: 'R-007',
+  id: 'R-014',
   name: 'Custom Declared Policies compliance',
   severity: 'high',
   owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval',
@@ -657,7 +776,14 @@ export const RULES_REGISTRY: Rule[] = [
   piiExternalMcpRule,
   memoryPoisoningRule,
   infiniteLoopsRule,
-  governanceHardeningRule,
+  criticalToolAuthIdentityRule,
+  criticalToolRateLimitRule,
+  approvalGovernanceRule,
+  externalMcpSideEffectRule,
+  allowDenyConflictRule,
+  autonomousSideEffectToolRule,
+  modelRetentionDataRule,
+  delegationCycleRule,
   customPoliciesRule
 ];
 

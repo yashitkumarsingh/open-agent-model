@@ -34,6 +34,9 @@ To keep the documentation clean and developer-friendly, the specifications are d
 
 ## Quick Start
 ```bash
+# Use the pinned runtime
+nvm use
+
 # Install and build
 npm install
 npm run build

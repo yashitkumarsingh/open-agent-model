@@ -34,7 +34,12 @@ policies:
 ```
 This decouples risk evaluation logic entirely from the compiler engine, allowing enterprise teams to distribute custom risk profiles.
 
-### 5. Importers and Runtime Adapters
+### 5. Policy and Risk Rule Expansion
+- **Richer typed policy expressions** over model, identity, tool side effect, MCP trust, and data classification fields.
+- **Policy exceptions** with owners, expiry, and justification fields.
+- **SARIF source-location mapping** backed by YAML CST/source metadata rather than raw text scanning.
+
+### 6. Importers and Runtime Adapters
 - **MCP tool metadata import** from live server manifests.
 - **LangGraph and CrewAI importers** that emit `agentmodel.yaml`.
 - **OpenTelemetry GenAI/MCP adapters** that map standard semantic-convention attributes into the current drift analyzer.

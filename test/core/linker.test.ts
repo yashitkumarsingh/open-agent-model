@@ -187,4 +187,77 @@ agents:
     }
   });
 
+  await t.test('5. Agent Model Binding and Identity Scope Checks', () => {
+    const disallowedModelYaml = `
+system: test-system
+version: "1.0"
+models:
+  - id: model-a
+    provider: openai
+    risk: medium
+    allowed_for: [other-agent]
+agents:
+  - id: agent-a
+    purpose: "Test"
+    model: model-a
+  - id: other-agent
+    purpose: "Other"
+`;
+    const missingScopeYaml = `
+system: test-system
+version: "1.0"
+identities:
+  - id: refund-sa
+    type: service_account
+    scopes: [crm.read]
+agents:
+  - id: agent-a
+    purpose: "Test"
+tools:
+  - id: issue-refund
+    type: payment_api
+    auth_identity: refund-sa
+    required_scopes: [refund.write]
+`;
+    const missingAuthForScopeYaml = `
+system: test-system
+version: "1.0"
+agents:
+  - id: agent-a
+    purpose: "Test"
+tools:
+  - id: issue-refund
+    type: payment_api
+    required_scopes: [refund.write]
+`;
+    const tempFile = path.resolve(__dirname, 'temp-binding.yaml');
+
+    fs.writeFileSync(tempFile, disallowedModelYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'Agent model bindings must be allowed by model.allowed_for');
+      assert.match(res.errors?.join('\n') || '', /does not include the agent in 'allowed_for'/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    fs.writeFileSync(tempFile, missingScopeYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'Tool required scopes must be granted by the bound identity');
+      assert.match(res.errors?.join('\n') || '', /requires scope 'refund.write'/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    fs.writeFileSync(tempFile, missingAuthForScopeYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'Tools with required scopes must declare auth_identity');
+      assert.match(res.errors?.join('\n') || '', /declares required_scopes but has no auth_identity/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
 });

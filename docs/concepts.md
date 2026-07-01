@@ -78,3 +78,5 @@ graph LR
    If an agent can write directly to its vector memory stores without poisoning safeguards, malicious instructions can be stored permanently, polluting future retrieval cycles.
 5. **PII Exfiltration (OWASP LLM02:2025)**: 
    Agents touching sensitive data classes (classified as PII or credentials) must not route commands or payloads to external or untrusted MCP servers.
+6. **Decorative Governance Metadata**:
+   Agent-BOM fields such as `auth_identity`, `required_scopes`, `rate_limit`, `approval`, `model`, and `data_retention` must be enforceable. `oam` now checks scope coverage, missing owners, missing approval roles, overlong approval windows, external MCP side effects, risky model/data pairings, and autonomous write/command tools.

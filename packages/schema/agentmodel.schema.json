@@ -105,6 +105,10 @@
             "type": "string",
             "description": "The core purpose or goal of the agent."
           },
+          "model": {
+            "type": "string",
+            "description": "Model catalog ID this agent is expected to use."
+          },
           "framework": {
             "type": "string",
             "description": "The framework used (e.g. langgraph, autogen, crewai)."
@@ -240,6 +244,13 @@
           "auth_identity": {
             "type": "string",
             "description": "The credentials ID referenced to perform authentication."
+          },
+          "required_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Identity scopes required to invoke this tool."
           },
           "approval": {
             "type": "object",

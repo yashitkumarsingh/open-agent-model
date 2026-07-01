@@ -11,7 +11,7 @@ models:
   - id: gpt-5.5-thinking
     provider: openai
     deployment: prod-agent-router
-    allowed_for: [support-triage]
+    allowed_for: [support-triage, refund-executor]
     data_retention: disabled
     region: australia-east
     risk: medium
@@ -21,11 +21,12 @@ identities:
     type: service_account
     owner: platform-team
     expires_at: "2026-12-31T23:59:59Z"
-    scopes: [crm.read]
+    scopes: [crm.read, refund.write]
 
 agents:
   - id: support-triage
     purpose: "Analyze incoming customer tickets and route payment issues to refund executor."
+    model: gpt-5.5-thinking
     framework: crewai
     autonomy: supervised
     memory:
@@ -46,6 +47,7 @@ agents:
 
   - id: refund-executor
     purpose: "Evaluate customer requests and securely execute financial refund transfers."
+    model: gpt-5.5-thinking
     framework: langgraph
     autonomy: human-approval-required
     allowed_tools:
@@ -72,6 +74,7 @@ tools:
     risk: critical
     side_effect: payout
     auth_identity: triage-agent-sa
+    required_scopes: [refund.write]
     approval:
       mode: human
       approver_role: finance-manager

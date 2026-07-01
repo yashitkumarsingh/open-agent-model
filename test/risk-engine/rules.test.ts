@@ -156,4 +156,125 @@ test('Risk Engine Rules Test Suite', async (t) => {
     assert.strictEqual(hasUnapprovedDangerous, false, 'Structured tool approval modes should satisfy R-002');
   });
 
+  await t.test('5. Governance hardening catches auth, approval, MCP, model, and autonomy gaps', () => {
+    const model: SystemModel = {
+      system: 'governance-hardening-test',
+      version: '1.0',
+      models: [
+        {
+          id: 'retention-model',
+          provider: 'external-ai',
+          allowed_for: ['pii-agent'],
+          data_retention: 'enabled',
+          risk: 'high'
+        }
+      ],
+      identities: [
+        {
+          id: 'ownerless-sa',
+          type: 'service_account',
+          scopes: ['payments.write']
+        }
+      ],
+      agents: [
+        {
+          id: 'pii-agent',
+          purpose: 'Handle PII',
+          model: 'retention-model',
+          autonomy: 'supervised',
+          allowed_tools: ['pii-reader']
+        },
+        {
+          id: 'autonomous-agent',
+          purpose: 'Run commands',
+          autonomy: 'autonomous',
+          allowed_tools: ['shell-tool']
+        },
+        {
+          id: 'confused-agent',
+          purpose: 'Ambiguous policy',
+          allowed_tools: ['shell-tool'],
+          denied_tools: ['shell-tool']
+        },
+        {
+          id: 'cycle-a',
+          purpose: 'Cycle A',
+          allowed_delegates: ['cycle-b']
+        },
+        {
+          id: 'cycle-b',
+          purpose: 'Cycle B',
+          allowed_delegates: ['cycle-a']
+        }
+      ],
+      tools: [
+        {
+          id: 'critical-no-auth',
+          type: 'payment_api',
+          risk: 'critical',
+          side_effect: 'payout'
+        },
+        {
+          id: 'critical-ownerless',
+          type: 'payment_api',
+          risk: 'critical',
+          side_effect: 'payout',
+          auth_identity: 'ownerless-sa',
+          rate_limit: { max_calls_per_task: 1 },
+          approval: {
+            mode: 'human',
+            expiry_seconds: 7200
+          }
+        },
+        {
+          id: 'external-write',
+          type: 'api',
+          risk: 'medium',
+          side_effect: 'external_write'
+        },
+        {
+          id: 'shell-tool',
+          type: 'command_line',
+          risk: 'medium',
+          side_effect: 'system_alteration'
+        },
+        {
+          id: 'pii-reader',
+          type: 'api',
+          risk: 'low',
+          data_classes: ['customer-pii']
+        }
+      ],
+      data_classes: [
+        {
+          id: 'customer-pii',
+          sensitivity: 'critical',
+          classification: 'pii'
+        }
+      ],
+      mcp_servers: [
+        {
+          id: 'vendor-mcp',
+          trust_level: 'external',
+          exposes: ['external-write']
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(model);
+    const ids = new Set(findings.map((finding) => finding.id));
+
+    assert.strictEqual(ids.has('R-006-AUTH'), true, 'High-impact tools without auth identity should be flagged');
+    assert.strictEqual(ids.has('R-006-RATE'), true, 'High-impact tools without rate limit should be flagged');
+    assert.strictEqual(ids.has('R-006-OWNER'), true, 'Ownerless identities used by high-impact tools should be flagged');
+    assert.strictEqual(ids.has('R-006-APPROVER'), true, 'Human approval without approver role should be flagged');
+    assert.strictEqual(ids.has('R-006-APPROVAL-EXPIRY'), true, 'Missing or long approval expiry should be flagged');
+    assert.strictEqual(ids.has('R-006-MCP-SIDE-EFFECT'), true, 'External MCP write/payout exposure should be flagged');
+    assert.strictEqual(ids.has('R-006-MODEL-RETENTION'), true, 'PII handling with retention-enabled model should be flagged');
+    assert.strictEqual(ids.has('R-006-MODEL-RISK'), true, 'High-risk model with high-sensitivity data should be flagged');
+    assert.strictEqual(ids.has('R-006-ALLOW-DENY'), true, 'Allowed and denied same tool should be flagged');
+    assert.strictEqual(ids.has('R-006-DELEGATION-CYCLE'), true, 'Delegation cycles should be flagged');
+    assert.strictEqual(ids.has('R-006-AUTONOMOUS-WRITE'), true, 'Autonomous command/write tools should be flagged');
+  });
+
 });

@@ -35,7 +35,7 @@ oam init -o agentmodel.yaml
 ```
 
 ### 2. Validate Specifications (`oam validate`)
-Validates your `agentmodel.yaml` config against the JSON Schema and runs referential semantic link checks. Validation rejects unknown properties, duplicate IDs, missing delegates, missing tool bindings, missing model-agent bindings, missing tool identities, invalid identity expiry timestamps, and data classes that are referenced but not declared.
+Validates your `agentmodel.yaml` config against the JSON Schema and runs referential semantic link checks. Validation rejects unknown properties, duplicate IDs, missing delegates, missing tool bindings, missing model-agent bindings, missing tool identities, missing required identity scopes, invalid identity expiry timestamps, and data classes that are referenced but not declared.
 ```bash
 oam validate -i agentmodel.yaml
 ```
@@ -98,8 +98,8 @@ OpenAgentModel treats `agentmodel.yaml` as a strict security contract. Unknown o
 - `version`: Version of the model definition.
 - `models`: Approved model catalog.
 - `identities`: Credentials, roles, and service accounts used by tools.
-- `agents`: Agent definitions and their capabilities.
-- `tools`: Callable tools, side effects, auth bindings, approvals, and rate limits.
+- `agents`: Agent definitions, model bindings, and capabilities.
+- `tools`: Callable tools, side effects, auth bindings, required scopes, approvals, and rate limits.
 - `mcp_servers`: MCP trust boundaries and exposed tools.
 - `data_classes`: Data sensitivity and classification catalog.
 - `policies`: Legacy string policies or experimental declarative policy objects.
@@ -116,6 +116,17 @@ models:
     risk: medium
 ```
 `allowed_for` entries must reference declared `agents`.
+
+### Agents
+```yaml
+agents:
+  - id: refund-executor
+    purpose: "Evaluate customer requests and securely execute financial refund transfers."
+    model: gpt-5.5-thinking
+    autonomy: human-approval-required
+    allowed_tools: [issue-refund]
+```
+`model` must reference a declared model. If that model declares `allowed_for`, the agent must be listed there too.
 
 ### Identities
 ```yaml
@@ -136,6 +147,7 @@ tools:
     risk: critical
     side_effect: payout
     auth_identity: triage-agent-sa
+    required_scopes: [refund.write]
     approval:
       mode: human
       approver_role: finance-manager
@@ -143,7 +155,21 @@ tools:
     rate_limit:
       max_calls_per_task: 1
 ```
-`auth_identity` must reference a declared identity. Human approval can be declared with legacy `requires_human_approval: true`, structured `approval.mode: human`, structured `approval.mode: multi-party`, or an agent-level `approval_required_for` entry.
+`auth_identity` must reference a declared identity. When `required_scopes` is present, the bound identity must grant every listed scope. Human approval can be declared with legacy `requires_human_approval: true`, structured `approval.mode: human`, structured `approval.mode: multi-party`, or an agent-level `approval_required_for` entry.
+
+### Built-In Governance Rules
+`oam risk` includes static checks for:
+- Transitive A2A privilege escalation.
+- Autonomous execution of high-risk tools.
+- PII crossing external or untrusted MCP boundaries.
+- Memory write without poisoning protection.
+- Missing retry or loop protection.
+- High-impact tools missing auth identity, owner, rate limits, approver role, or bounded approval expiry.
+- External/untrusted MCP servers exposing payout, write, command, or system-altering tools.
+- Retention-enabled or high-risk models handling sensitive data.
+- Agents that allow and deny the same tool.
+- Delegation cycles.
+- Autonomous agents with command-line, write-file, payout, or system-altering tools.
 
 ### Experimental Declarative Policies
 ```yaml

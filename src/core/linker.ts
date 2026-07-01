@@ -40,8 +40,20 @@ export function linkAndValidateSystemModel(data: SystemModel): string[] {
     )
   );
 
+  const modelMap = new Map(models.map((model) => [model.id, model]));
+  const identityMap = new Map(identities.map((identity) => [identity.id, identity]));
+
   // 2. Validate Agent cross-references
   agents.forEach((agent) => {
+    if (agent.model) {
+      const model = modelMap.get(agent.model);
+      if (!model) {
+        errors.push(`Referential Error: Agent '${agent.id}' references model '${agent.model}' which is not defined in 'models'.`);
+      } else if (model.allowed_for && !model.allowed_for.includes(agent.id)) {
+        errors.push(`Referential Error: Agent '${agent.id}' references model '${agent.model}', but that model does not include the agent in 'allowed_for'.`);
+      }
+    }
+
     // Validate allowed_tools
     if (agent.allowed_tools) {
       agent.allowed_tools.forEach((toolId) => {
@@ -100,6 +112,22 @@ export function linkAndValidateSystemModel(data: SystemModel): string[] {
 
     if (tool.auth_identity && !identityIds.has(tool.auth_identity)) {
       errors.push(`Referential Error: Tool '${tool.id}' references auth_identity '${tool.auth_identity}' which is not defined in 'identities'.`);
+    }
+
+    if (tool.required_scopes && tool.required_scopes.length > 0) {
+      if (!tool.auth_identity) {
+        errors.push(`Semantic Error: Tool '${tool.id}' declares required_scopes but has no auth_identity.`);
+      } else {
+        const identity = identityMap.get(tool.auth_identity);
+        if (identity) {
+          const grantedScopes = new Set(identity.scopes || []);
+          tool.required_scopes.forEach((scope) => {
+            if (!grantedScopes.has(scope)) {
+              errors.push(`Semantic Error: Tool '${tool.id}' requires scope '${scope}' but identity '${tool.auth_identity}' does not grant it.`);
+            }
+          });
+        }
+      }
     }
   });
 

@@ -44,6 +44,7 @@ export interface DeclarativePolicy {
 export interface Agent {
   id: string;
   purpose: string;
+  model?: string;
   framework?: string;
   autonomy?: AgentAutonomy;
   memory?: AgentMemory;
@@ -87,6 +88,7 @@ export interface Tool {
   requires_human_approval?: boolean;
   side_effect?: 'read' | 'external_write' | 'payout' | 'system_alteration';
   auth_identity?: string;
+  required_scopes?: string[];
   approval?: ToolApproval;
   rate_limit?: ToolRateLimit;
 }

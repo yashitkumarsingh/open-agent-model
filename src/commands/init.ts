@@ -3,8 +3,7 @@ import path from 'path';
 
 const defaultTemplate = `# OpenAgentModel Specification
 #
-# NOTE: This default template is pre-configured with intentional architectural vulnerabilities
-# (dodgy configurations) to demonstrate how oam flags security risks and policy failures.
+# NOTE: This default template is fully secured and passes all static safety gates.
 system: healthcare-triage-platform
 version: "0.1"
 
@@ -18,42 +17,34 @@ agents:
       contains:
         - patient_symptoms
       write_access: true
-      # Flags [HIGH] R-004-POI: Write access is enabled on vector memory, but poisoning
-      # protection is disabled. Malicious payloads could compromise long-term retrieval.
-      poisoning_protection: false
+      poisoning_protection: true # Safe: Vector memory poisoning checks are enabled
     allowed_tools:
       - query-symptom-db
-      # Flags [HIGH] R-002-AUT: High-risk/PII tool read-patient-chart is allowed on a
-      # supervised agent, but requires no human approval gate in autonomy settings.
       - read-patient-chart
-    allowed_delegates:
-      # Flags [CRITICAL] R-001-ESC: Triage-agent is allowed to delegate to clinical-diagnostician.
-      # Because clinical-diagnostician has access to high-privilege tool 'prescribe-medication'
-      # which triage-agent cannot call directly, this creates an A2A privilege escalation pathway.
-      - clinical-diagnostician
+    approval_required_for:
+      - read-patient-chart # Safe Gate: HIPAA database access requires human approval
+    allowed_delegates: [] # Safe: Removed delegation escalation pathway
     retry_policy:
-      # Flags [MEDIUM] R-005-MAX & [HIGH] R-101: Retries exceed the default budget recommendations (3-5)
-      # and the custom system-wide policy limit of 15 calls.
-      max_retries: 20
-      # Flags [MEDIUM] R-005-LOOP: Loop detection is disabled, creating cost runaway risks on recursive tool fails.
-      loop_detection: false
+      max_retries: 5 # Safe: Limited retries to avoid API cost runaways
+      loop_detection: true # Safe: Recursive execution checks enabled
     spend_limit:
-      max_cost_usd: 0.5
+      max_cost_usd: 0.20
       time_window: 1h
 
   - id: clinical-diagnostician
     purpose: "Diagnose conditions and recommend clinical prescriptions."
     framework: langgraph
     autonomy: human-approval-required
-    # Flags [HIGH] R-100: This agent lacks a 'spend_limit' block, violating the system-wide policy
-    # requiring explicit budget caps (max $0.50).
     allowed_tools:
       - query-symptom-db
       - prescribe-medication
     approval_required_for:
       - prescribe-medication # Safe Gate: Prescriptions require human signoff
-    # Flags [MEDIUM] R-005-MISS & [HIGH] R-102: Lacks a retry_policy, violating loop protection
-    # standards and custom policies.
+    retry_policy:
+      max_retries: 3 # Safe: Defends against loop runaways
+      loop_detection: true
+    spend_limit:
+      max_cost_usd: 0.40 # Safe: Under the custom policy cap limit
 
 tools:
   - id: query-symptom-db

@@ -1,7 +1,7 @@
-# OpenAgentModel Specification
-#
-# NOTE: This default template is fully secured and passes all static safety gates.
-system: healthcare-triage-platform
+# OpenAgentModel Dodgy Test Configuration
+# This file is intentionally insecure and is used by CI/CD to verify that the static risk engine
+# correctly blocks hazardous agent designs (e.g. unapproved tools, infinite loops).
+system: dodgy-agent-system
 version: "0.1"
 
 agents:
@@ -14,18 +14,17 @@ agents:
       contains:
         - patient_symptoms
       write_access: true
-      poisoning_protection: true # Safe: Vector memory poisoning checks are enabled
+      poisoning_protection: false # Violation: Missing poisoning protection
     allowed_tools:
       - query-symptom-db
       - read-patient-chart
-    approval_required_for:
-      - read-patient-chart # Safe Gate: HIPAA database access requires human approval
-    allowed_delegates: [] # Safe: Removed delegation escalation pathway
+    allowed_delegates:
+      - clinical-diagnostician # Violation: Delegation escalation path
     retry_policy:
-      max_retries: 5 # Safe: Limited retries to avoid API cost runaways
-      loop_detection: true # Safe: Recursive execution checks enabled
+      max_retries: 20 # Violation: Excessive retries
+      loop_detection: false # Violation: Missing loop tracking
     spend_limit:
-      max_cost_usd: 0.20
+      max_cost_usd: 0.5
       time_window: 1h
 
   - id: clinical-diagnostician
@@ -36,12 +35,7 @@ agents:
       - query-symptom-db
       - prescribe-medication
     approval_required_for:
-      - prescribe-medication # Safe Gate: Prescriptions require human signoff
-    retry_policy:
-      max_retries: 3 # Safe: Defends against loop runaways
-      loop_detection: true
-    spend_limit:
-      max_cost_usd: 0.40 # Safe: Under the custom policy cap limit
+      - prescribe-medication
 
 tools:
   - id: query-symptom-db

@@ -14,7 +14,8 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "start": "tsc && node ./dist/index.js",
-    "test": "npm run build && node --import tsx --test test/**/*.test.ts",
+    "test": "npm run build && npm run test:compiled",
+    "test:compiled": "node --import tsx --test test/**/*.test.ts",
     "precommit": "node scripts/precommit.js",
     "prepare": "husky"
   },

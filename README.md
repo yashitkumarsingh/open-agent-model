@@ -33,6 +33,12 @@ To keep the documentation clean and developer-friendly, the specifications are d
    - Outlines future features: LangGraph/CrewAI AST code importers, Sugiyama graph crossing minimization, and OpenTelemetry trace checking.
 6. **[Testing Guide](TESTING.md)**
    - Lists the local Node 22 test workflow and current test coverage map.
+7. **[Known Limitations](docs/known-limitations.md)**
+   - Calls out current static-analysis, SARIF, MCP, and drift-detection boundaries.
+8. **[Schema Versioning](docs/schema-versioning.md)**
+   - Explains how schema and Agent-BOM version metadata are managed.
+9. **[Release Process](docs/release-process.md)**
+   - Documents the current manual release checklist and future automation target.
 
 ---
 

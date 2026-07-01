@@ -21,6 +21,12 @@ Run the full test suite:
 npm test
 ```
 
+Run tests against an already-built `dist/` directory:
+
+```bash
+npm run test:compiled
+```
+
 Run the same local gate used before commits:
 
 ```bash

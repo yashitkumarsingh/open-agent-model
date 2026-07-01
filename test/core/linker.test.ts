@@ -291,4 +291,69 @@ tools:
     }
   });
 
+  await t.test('7. Duplicate Reference Lists Are Rejected', () => {
+    const duplicateReferenceYaml = `
+system: test-system
+version: "1.0"
+models:
+  - id: model-a
+    provider: openai
+    risk: medium
+    allowed_for: [agent-a, agent-a]
+identities:
+  - id: app-sa
+    type: service_account
+    scopes: [crm.read, crm.read]
+agents:
+  - id: agent-a
+    purpose: "Test"
+    model: model-a
+    memory:
+      type: vector
+      contains: [customer-pii, customer-pii]
+    allowed_tools: [read-crm, read-crm]
+    denied_tools: [blocked-tool, blocked-tool]
+    approval_required_for: [read-crm, read-crm]
+    allowed_delegates: [agent-b, agent-b]
+  - id: agent-b
+    purpose: "Delegate"
+tools:
+  - id: read-crm
+    type: api
+    auth_identity: app-sa
+    required_scopes: [crm.read, crm.read]
+    data_classes: [customer-pii, customer-pii]
+  - id: blocked-tool
+    type: api
+mcp_servers:
+  - id: internal-mcp
+    trust_level: internal
+    exposes: [read-crm, read-crm]
+data_classes:
+  - id: customer-pii
+    sensitivity: high
+    classification: pii
+`;
+    const tempFile = path.resolve(__dirname, 'temp-duplicate-refs.yaml');
+
+    fs.writeFileSync(tempFile, duplicateReferenceYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      const errors = res.errors?.join('\n') || '';
+      assert.strictEqual(res.valid, false, 'Duplicate reference list entries should fail semantic validation');
+      assert.match(errors, /Agent 'agent-a'.*allowed_tools/);
+      assert.match(errors, /Agent 'agent-a'.*denied_tools/);
+      assert.match(errors, /Agent 'agent-a'.*approval_required_for/);
+      assert.match(errors, /Agent 'agent-a'.*allowed_delegates/);
+      assert.match(errors, /Agent 'agent-a' memory.*contains/);
+      assert.match(errors, /Tool 'read-crm'.*required_scopes/);
+      assert.match(errors, /Tool 'read-crm'.*data_classes/);
+      assert.match(errors, /Model 'model-a'.*allowed_for/);
+      assert.match(errors, /Identity 'app-sa'.*scopes/);
+      assert.match(errors, /MCP Server 'internal-mcp'.*exposes/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
 });

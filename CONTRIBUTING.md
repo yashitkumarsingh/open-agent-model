@@ -7,7 +7,7 @@ Thank you for contributing to OpenAgentModel! We welcome contributions to improv
 ## 1. Development Principles
 
 We follow strict design rules to keep the CLI fast, reliable, and strongly typed:
-- **Matt Pocock Style (Type Safety)**: No `any` type variables are allowed in primary interfaces. Narrow unknown objects with type guards.
+- **Matt Pocock Style (Type Safety)**: Keep primary interfaces strongly typed. When external input or command parsing requires `any`, narrow it quickly with schema validation, type guards, or explicit runtime checks.
 - **Andrej Karpathy Style (Minimal Dependencies)**: Write core visual renderers (SVG layout calculations) and static check rules from scratch rather than bringing in heavy external graphics engines or runtime frameworks.
 - **Martin Fowler Style (Semantic DSL)**: The YAML schema is the source of truth for the system state model. Keep schema bounds declarative.
 
@@ -16,14 +16,15 @@ We follow strict design rules to keep the CLI fast, reliable, and strongly typed
 ## 2. Setting Up Your Development Workspace
 
 ### Prerequisites
-- Node.js (v20+ or v22+)
+- Node.js 22.14.0 or another Node 22 release. This repository includes `.nvmrc` and `.node-version`.
 - npm
 
 ### Installation
 Clone and install the local workspace:
 ```bash
-git clone https://github.com/open-agent-model/open-agent-model.git
+git clone https://github.com/yashitkumarsingh/open-agent-model.git
 cd open-agent-model
+nvm use
 npm install
 ```
 
@@ -73,6 +74,8 @@ Static risk scans are run via a modular registry pattern. To add a new threat ru
      myNewRule
    ];
    ```
+4. Add or update coverage in `test/risk-engine/rules.test.ts`.
+5. Document the new rule ID in `docs/rule-catalog.md`.
 
 ---
 
@@ -80,7 +83,7 @@ Static risk scans are run via a modular registry pattern. To add a new threat ru
 
 - Enforce that all example configurations remain valid:
   ```bash
-  for f in examples/*.yaml; do node dist/index.js validate -i "$f"; done
+  npm run precommit
   ```
 - Rebuild the compiler and check that there are no compile warnings.
 - Keep description updates modular and clear in the commit.

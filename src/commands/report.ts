@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { validateYaml } from './validate.js';
 import { runRiskChecks } from '../risk-engine/rules.js';
 import { generateSvgDiagram } from './diagram.js';
@@ -7,6 +8,13 @@ import { generatePolicyRecommendationsMd } from '../report/policy-template.js';
 import { generateHtmlReport } from '../report/html-template.js';
 import { generateSarifReport } from '../report/sarif-builder.js';
 import { generateOtelSchema } from '../report/otel-exporter.js';
+import { getPackageVersion } from '../core/version.js';
+
+function hashFileSha256(filePath: string): string {
+  const hash = crypto.createHash('sha256');
+  hash.update(fs.readFileSync(filePath));
+  return hash.digest('hex');
+}
 
 export function reportCommand(options: { input: string; dir: string; asOf?: string }) {
   const inputPath = path.resolve(options.input);
@@ -29,6 +37,7 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
 
   // Run risk engine
   const findings = runRiskChecks(data);
+  const packageVersion = getPackageVersion();
 
   // Generate SVG diagram content
   const svg = generateSvgDiagram(data);
@@ -38,9 +47,23 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
 
   // Generate ABOM structure
   const abom = {
+    bomFormat: 'OpenAgentModel-AgentBOM',
+    bomVersion: packageVersion,
+    schemaVersion: packageVersion,
     system: data.system,
     version: data.version,
     generatedAt: new Date().toISOString(),
+    generatedBy: {
+      name: 'open-agent-model',
+      version: packageVersion,
+      command: 'oam report'
+    },
+    sourceFile: options.input,
+    sourceHash: {
+      algorithm: 'sha256',
+      value: hashFileSha256(inputPath)
+    },
+    ruleSetVersion: packageVersion,
     riskSummary: {
       totalFindings: findings.length,
       critical: findings.filter(f => f.severity === 'critical').length,
@@ -83,7 +106,8 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
       id: m.id,
       trust_level: m.trust_level,
       exposes: m.exposes,
-    }))
+    })),
+    findings
   };
 
   // Generate html dashboard content

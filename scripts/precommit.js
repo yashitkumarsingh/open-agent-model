@@ -15,9 +15,9 @@ try {
   console.log('Compiling TypeScript codebase...');
   execSync('npm run build', { stdio: 'inherit' });
 
-  // 1.5 Run Unit Tests
+  // 1.5 Run Unit Tests against the freshly compiled output
   console.log('Running automated unit tests...');
-  execSync('npm run test', { stdio: 'inherit' });
+  execSync('npm run test:compiled', { stdio: 'inherit' });
 
   console.log('Validating agentmodel.yaml...');
   execSync('node dist/index.js validate -i agentmodel.yaml', { stdio: 'inherit' });

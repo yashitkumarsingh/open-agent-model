@@ -31,6 +31,18 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
     return ids;
   };
 
+  const addDuplicateListItems = (owner: string, field: string, values?: string[]): void => {
+    if (!values) return;
+    const seen = new Set<string>();
+
+    values.forEach((value) => {
+      if (seen.has(value)) {
+        errors.push(`Duplicate Reference Error: ${owner} lists '${value}' more than once in '${field}'.`);
+      }
+      seen.add(value);
+    });
+  };
+
   // 1. Gather all declared keys
   const agentIds = addUniqueIds('Agent', agents);
   const toolIds = addUniqueIds('Tool', tools);
@@ -50,6 +62,12 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
 
   // 2. Validate Agent cross-references
   agents.forEach((agent) => {
+    addDuplicateListItems(`Agent '${agent.id}'`, 'allowed_tools', agent.allowed_tools);
+    addDuplicateListItems(`Agent '${agent.id}'`, 'denied_tools', agent.denied_tools);
+    addDuplicateListItems(`Agent '${agent.id}'`, 'approval_required_for', agent.approval_required_for);
+    addDuplicateListItems(`Agent '${agent.id}'`, 'allowed_delegates', agent.allowed_delegates);
+    addDuplicateListItems(`Agent '${agent.id}' memory`, 'contains', agent.memory?.contains);
+
     if (agent.model) {
       const model = modelMap.get(agent.model);
       if (!model) {
@@ -107,6 +125,9 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
 
   // 3. Validate Tool data classes references
   tools.forEach((tool) => {
+    addDuplicateListItems(`Tool '${tool.id}'`, 'data_classes', tool.data_classes);
+    addDuplicateListItems(`Tool '${tool.id}'`, 'required_scopes', tool.required_scopes);
+
     if (tool.data_classes) {
       tool.data_classes.forEach((dcId) => {
         if (!dataClassIds.has(dcId)) {
@@ -138,6 +159,8 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
 
   // 4. Validate Model allowed agent references
   models.forEach((model) => {
+    addDuplicateListItems(`Model '${model.id}'`, 'allowed_for', model.allowed_for);
+
     if (model.allowed_for) {
       model.allowed_for.forEach((agentId) => {
         if (!agentIds.has(agentId)) {
@@ -149,6 +172,8 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
 
   // 5. Validate Identity metadata
   identities.forEach((identity) => {
+    addDuplicateListItems(`Identity '${identity.id}'`, 'scopes', identity.scopes);
+
     if (identity.expires_at) {
       const expiryMs = Date.parse(identity.expires_at);
       if (Number.isNaN(expiryMs)) {
@@ -161,6 +186,8 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
 
   // 6. Validate MCP exposed tools references
   mcpServers.forEach((mcp) => {
+    addDuplicateListItems(`MCP Server '${mcp.id}'`, 'exposes', mcp.exposes);
+
     if (mcp.exposes) {
       mcp.exposes.forEach((toolId) => {
         if (!toolIds.has(toolId)) {

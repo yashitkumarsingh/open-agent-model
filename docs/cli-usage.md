@@ -72,7 +72,7 @@ oam report -i agentmodel.yaml -d reports/
 ```
 Generated outputs in the directory:
 - `agent-map.svg` (Architecture map)
-- `agent-bom.json` (Structured ABOM with models, identities, data classes, agents, tools, MCP servers, and policies)
+- `agent-bom.json` (Structured ABOM with format/version metadata, source hash, findings, models, identities, data classes, agents, tools, MCP servers, and policies)
 - `policy-recommendations.md` (policy recommendations / Rego-style examples)
 - `agent-risks.sarif` (SARIF JSON logs)
 - `agent-risk-report.html` (Interactive dark-mode dashboard)

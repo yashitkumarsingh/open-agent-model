@@ -246,4 +246,69 @@ agents:
     }, /Command failed/, 'Dodgy configurations must fail the static risk scan gate');
   });
 
+  await t.test('9. Extended Risk Engine Rules (R-002 & R-003)', () => {
+    const model: SystemModel = {
+      system: 'extended-rules-test',
+      version: '1.0',
+      agents: [
+        {
+          id: 'rogue-agent',
+          purpose: 'Testing',
+          autonomy: 'autonomous', // R-002 violation: autonomous calling high risk tool without explicit approval
+          allowed_tools: ['delete-db', 'pii-extractor']
+        }
+      ],
+      tools: [
+        {
+          id: 'delete-db',
+          type: 'database',
+          risk: 'high',
+          requires_human_approval: false
+        },
+        {
+          id: 'pii-extractor',
+          type: 'api',
+          risk: 'medium',
+          data_classes: ['customer-pii'] // PII
+        }
+      ],
+      data_classes: [
+        {
+          id: 'customer-pii',
+          classification: 'pii',
+          description: 'PII data'
+        }
+      ],
+      mcp_servers: [
+        {
+          id: 'external-vendor-mcp',
+          uri: 'https://vendor.example.com/mcp',
+          trust_level: 'external', // R-003 violation: PII connected to external MCP
+          exposes: ['pii-extractor'] 
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(model);
+    
+    // R-002
+    const hasUnapprovedDangerous = findings.some(f => f.id.includes('R-002'));
+    assert.strictEqual(hasUnapprovedDangerous, true, 'Risk engine should catch autonomous execution of high-risk tools');
+
+    // R-003
+    const hasPiiExfiltration = findings.some(f => f.id.includes('R-003'));
+    assert.strictEqual(hasPiiExfiltration, true, 'Risk engine should catch PII exfiltration via external MCP boundaries');
+  });
+
+  await t.test('10. CLI Drift & Diagram Integrations', () => {
+    // Assert drift command runs and fails with the example dodgy trace
+    assert.throws(() => {
+      execSync('node dist/index.js drift -i agentmodel.yaml -t examples/drift-traces.json', { stdio: 'pipe' });
+    }, /Command failed/, 'Drift analyzer must fail on unauthorized traces');
+
+    // Assert diagram command generates output file successfully
+    const diagramOut = execSync('node dist/index.js diagram -i agentmodel.yaml', { encoding: 'utf8' });
+    assert.match(diagramOut, /Successfully rendered/, 'Diagram generation should output a success log');
+  });
+
 });

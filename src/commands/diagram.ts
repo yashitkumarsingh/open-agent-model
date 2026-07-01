@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { validateYaml } from './validate.js';
-import { runRiskChecks } from '../risk-engine/rules.js';
+import { runRiskChecks } from '../risk-engine/rules/index.js';
 import { SystemModel } from '../core/model.js';
 
 interface GraphNode {

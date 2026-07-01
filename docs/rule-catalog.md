@@ -1,6 +1,6 @@
 # Built-In Rule Catalog
 
-This catalog documents the static rules currently run by `oam risk`. Rule IDs are stable identifiers for CLI output, SARIF findings, reports, and CI gates.
+This catalog documents the static rules currently run by `oam risk`. Rule IDs are stable identifiers for CLI output, SARIF findings, reports, and CI gates. Implementations live in focused modules under `src/risk-engine/rules/`.
 
 ## R-001: Agent-to-Agent Privilege Escalation
 

@@ -26,7 +26,7 @@ Bridge design-time declarations with real-world trace behaviors:
 
 ### 4. Rego-like Policy DSL
 Support writing programmatic policy checks within the `policies` configuration block in YAML.
-Instead of relying on hardcoded risk rules inside `rules.ts`, compile DSL assertions dynamically:
+Instead of relying only on hardcoded modules in `src/risk-engine/rules/`, compile DSL assertions dynamically:
 ```yaml
 policies:
   - assert: "agent.autonomy == 'human-approval-required' if tool.risk == 'high'"

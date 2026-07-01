@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { Finding } from '../risk-engine/rules.js';
+import type { Finding } from '../risk-engine/rules/index.js';
 import { findLineNumber } from '../core/locator.js';
 import { getPackageVersion } from '../core/version.js';
 

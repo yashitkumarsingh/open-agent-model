@@ -50,10 +50,10 @@ import { SystemModel } from '../core/model.js'; // Must include .js extension!
 
 Static risk scans are run via a modular registry pattern. To add a new threat rule:
 
-1. Open `src/risk-engine/rules.ts`.
+1. Add a focused module under `src/risk-engine/rules/`.
 2. Implement the shared `Rule` interface:
    ```typescript
-   import { Rule, Finding } from './rules.js';
+   import { Rule, Finding } from './types.js';
 
    const myNewRule: Rule = {
      id: 'R-007',
@@ -67,7 +67,7 @@ Static risk scans are run via a modular registry pattern. To add a new threat ru
      }
    };
    ```
-3. Append your rule to the exported `RULES_REGISTRY` array:
+3. Append your rule to the exported `RULES_REGISTRY` array in `src/risk-engine/rules/index.ts`:
    ```typescript
    export const RULES_REGISTRY: Rule[] = [
      // ... other rules

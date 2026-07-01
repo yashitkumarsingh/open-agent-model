@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { generateSarifReport } from '../../src/report/sarif-builder.js';
-import { Finding } from '../../src/risk-engine/rules.js';
+import type { Finding } from '../../src/risk-engine/rules/index.js';
 
 test('SARIF Builder Test Suite', async (t) => {
   await t.test('1. Preserves full finding rule IDs', () => {

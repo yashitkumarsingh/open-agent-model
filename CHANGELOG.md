@@ -4,6 +4,8 @@ All notable changes to OpenAgentModel will be documented here.
 
 ## Unreleased
 
+- Split the risk-engine rule registry into focused modules under `src/risk-engine/rules/`.
+- Add a dependency-free coverage command with an 80% threshold.
 - Add duplicate reference-list validation for agents, tools, models, identities, memory, and MCP exposures.
 - Add Agent-BOM audit metadata including format version, schema version, generator, source hash, rule-set version, and findings.
 - Refresh contributor and project-readiness documentation for the Node 22 toolchain.

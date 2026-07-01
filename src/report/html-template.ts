@@ -1,4 +1,4 @@
-import { Finding } from '../risk-engine/rules.js';
+import type { Finding } from '../risk-engine/rules/index.js';
 import { generateRegoPolicy } from './policy-template.js';
 import { SystemModel, Agent, Tool, McpServer } from '../core/model.js';
 

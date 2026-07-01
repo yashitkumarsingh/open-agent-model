@@ -27,6 +27,12 @@ Run tests against an already-built `dist/` directory:
 npm run test:compiled
 ```
 
+Run coverage with the 80% line/branch/function threshold used by precommit:
+
+```bash
+npm run coverage
+```
+
 Run the same local gate used before commits:
 
 ```bash

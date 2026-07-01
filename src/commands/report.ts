@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { validateYaml } from './validate.js';
-import { runRiskChecks } from '../risk-engine/rules.js';
+import { runRiskChecks } from '../risk-engine/rules/index.js';
 import { generateSvgDiagram } from './diagram.js';
 import { generatePolicyRecommendationsMd } from '../report/policy-template.js';
 import { generateHtmlReport } from '../report/html-template.js';

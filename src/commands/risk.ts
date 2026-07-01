@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { validateYaml } from './validate.js';
-import { runRiskChecks, Finding } from '../risk-engine/rules.js';
+import { runRiskChecks, type Finding } from '../risk-engine/rules/index.js';
 import { generateSarifReport } from '../report/sarif-builder.js';
 
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };

@@ -1,9 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { runRiskChecks } from '../../src/risk-engine/rules.js';
+import { RULES_REGISTRY, runRiskChecks } from '../../src/risk-engine/rules/index.js';
 import { SystemModel } from '../../src/core/model.js';
 
 test('Risk Engine Rules Test Suite', async (t) => {
+  await t.test('0. Rules registry exposes stable modular rule IDs', () => {
+    assert.deepStrictEqual(
+      RULES_REGISTRY.map((rule) => rule.id),
+      ['R-001', 'R-002', 'R-003', 'R-004', 'R-005', 'R-006', 'R-007', 'R-008', 'R-009', 'R-010', 'R-011', 'R-012', 'R-013', 'R-014'],
+      'Rules registry should preserve the stable rule order and IDs'
+    );
+  });
 
   await t.test('1. Transitive Graph A2A Privilege Escalation', () => {
     // Multi-hop escalation: A -> B -> C -> critical tool

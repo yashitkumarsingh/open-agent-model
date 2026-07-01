@@ -1,5 +1,5 @@
 import { SystemModel, Agent, Tool, McpServer, DataClass, DeclarativePolicy } from '../core/model.js';
-import { Finding } from './rules.js';
+import type { Finding } from './rules/types.js';
 import { hasHumanApproval } from './approval.js';
 
 export function evaluatePolicies(data: SystemModel): Finding[] {

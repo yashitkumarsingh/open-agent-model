@@ -7,6 +7,7 @@ import { diagramCommand } from './commands/diagram.js';
 import { riskCommand } from './commands/risk.js';
 import { reportCommand } from './commands/report.js';
 import { importMcpCommand } from './commands/import-mcp.js';
+import { driftCommand } from './commands/drift.js';
 
 const program = new Command();
 
@@ -68,6 +69,15 @@ program
   .option('--trust-level <level>', 'Trust zone boundary (internal, partner, external, untrusted)', 'external')
   .action((options) => {
     importMcpCommand(options);
+  });
+
+program
+  .command('drift')
+  .description('Compare runtime OpenTelemetry traces against design-time specification to detect drift')
+  .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
+  .option('-t, --traces <file>', 'Input OpenTelemetry JSON traces file', 'traces.json')
+  .action(async (options) => {
+    await driftCommand(options);
   });
 
 program.parse(process.argv);

@@ -24,6 +24,16 @@ try {
     }
   }
 
+  // 4. Verify Drift Detection flags threats correctly
+  console.log('Verifying that drift detector successfully blocks unauthorized traces...');
+  try {
+    execSync('node dist/index.js drift -i agentmodel.yaml -t examples/drift-traces.json', { stdio: 'pipe' });
+    console.error('\x1b[31m✘ Failed: Drift detector should have returned code 1 but returned 0 instead!\x1b[0m');
+    process.exit(1);
+  } catch (err) {
+    console.log('\x1b[32m✔ Success: Drift detector correctly identified violations and blocked execution.\x1b[0m');
+  }
+
   console.log('\x1b[32m✔ All pre-commit checks PASSED!\x1b[0m');
   process.exit(0);
 } catch (error) {

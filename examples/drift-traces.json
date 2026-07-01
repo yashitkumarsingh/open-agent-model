@@ -1,0 +1,64 @@
+[
+  {
+    "traceId": "trace-100",
+    "spanId": "span-1",
+    "name": "agent.run",
+    "attributes": {
+      "gen_ai.system": "healthcare-triage-platform",
+      "gen_ai.agent.id": "triage-agent"
+    }
+  },
+  {
+    "traceId": "trace-100",
+    "spanId": "span-2",
+    "parentSpanId": "span-1",
+    "name": "agent.tool_call",
+    "attributes": {
+      "gen_ai.system": "healthcare-triage-platform",
+      "gen_ai.agent.id": "triage-agent",
+      "gen_ai.tool.id": "query-symptom-db"
+    }
+  },
+  {
+    "traceId": "trace-100",
+    "spanId": "span-3",
+    "parentSpanId": "span-1",
+    "name": "agent.delegate",
+    "attributes": {
+      "gen_ai.system": "healthcare-triage-platform",
+      "gen_ai.agent.id": "triage-agent",
+      "gen_ai.delegate.id": "clinical-diagnostician"
+    }
+  },
+  {
+    "traceId": "trace-100",
+    "spanId": "span-4",
+    "parentSpanId": "span-1",
+    "name": "agent.tool_call",
+    "attributes": {
+      "gen_ai.system": "healthcare-triage-platform",
+      "gen_ai.agent.id": "triage-agent",
+      "gen_ai.tool.id": "prescribe-medication"
+    }
+  },
+  {
+    "traceId": "trace-200",
+    "spanId": "span-5",
+    "name": "agent.run",
+    "attributes": {
+      "gen_ai.system": "healthcare-triage-platform",
+      "gen_ai.agent.id": "clinical-diagnostician"
+    }
+  },
+  {
+    "traceId": "trace-200",
+    "spanId": "span-6",
+    "parentSpanId": "span-5",
+    "name": "agent.tool_call",
+    "attributes": {
+      "gen_ai.system": "healthcare-triage-platform",
+      "gen_ai.agent.id": "clinical-diagnostician",
+      "gen_ai.tool.id": "prescribe-medication"
+    }
+  }
+]

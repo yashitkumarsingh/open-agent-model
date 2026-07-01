@@ -46,6 +46,14 @@ jobs:
           echo "Asserting that the risk engine blocks insecure topologies..."
           ! node dist/index.js risk -i examples/dodgy-agent.yaml --fail-on high
 
+      - name: 3.5 Verify Drift Analyzer Correctly Flags Deviations (Failure Path)
+        # Verify that the drift detection engine successfully catches runtime execution deviations.
+        # We invert the exit code using bash '!' so that the CI step passes when
+        # unauthorized tool executions and delegations are successfully flagged (returns code 1).
+        run: |
+          echo "Asserting that the drift detection engine blocks unauthorized traces..."
+          ! node dist/index.js drift -i agentmodel.yaml -t examples/drift-traces.json
+
       - name: 4. Compile Visual Maps & Governance Packs
         run: |
           echo "Compiling vector diagrams and HTML report dashboard..."

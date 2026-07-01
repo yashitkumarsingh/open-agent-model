@@ -17,10 +17,10 @@ The current swimlane model places nodes in static vertical columns. For large to
 - **Sugiyama Layout Layering**: Node classification into ranked layers.
 - **Crossing Minimization**: Re-ordering nodes dynamically within layers to minimize edge intersections, creating clean, clean architecture sketches.
 
-### 3. Dynamic Telemetry Observability
+### 3. Dynamic Telemetry Observability [COMPLETED in v0.2.0]
 Bridge design-time declarations with real-world trace behaviors:
-- **OpenTelemetry Config Exporter**: Compile modeled tool boundaries directly into OpenTelemetry trace rules.
-- **Trace Analyzer Gate**: Compare runtime traces against design-time validation definitions, flagging drift warnings (e.g. if an agent starts calling a tool that is not declared in `allowed_tools` at runtime).
+- **OpenTelemetry Config Exporter**: Compile modeled tool boundaries directly into OpenTelemetry trace rules (`otel-schema.json`).
+- **Trace Analyzer Gate**: Compare runtime traces against design-time validation definitions, flagging drift warnings (`oam drift` CLI command).
 
 ### 4. Rego-like Policy DSL
 Support writing programmatic policy checks within the `policies` configuration block in YAML.

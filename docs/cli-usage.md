@@ -70,6 +70,20 @@ Generated outputs in the directory:
 - `agent-risks.sarif` (SARIF JSON logs)
 - `agent-risk-report.html` (Interactive dark-mode dashboard)
 
+### 6. Detect Runtime Drift (`oam drift`)
+Audits active runtime execution logs (OpenTelemetry trace spans) against design specifications to flag unauthorized tool execution or delegation pathways:
+```bash
+oam drift -i agentmodel.yaml -t traces.json
+```
+
+#### Flags:
+- `-i, --input <file>`: Input specification YAML file (default: `agentmodel.yaml`).
+- `-t, --traces <file>`: Input OpenTelemetry trace logs file. Supports standard JSON arrays or streaming JSON Lines (JSONL).
+
+#### Verification Scope:
+- **`agent.tool_call`**: Checks if the tool called is authorized in the agent's `allowed_tools` list.
+- **`agent.delegate`**: Checks if task delegation between Agent A and Agent B matches the declared `allowed_delegates` pathway.
+
 ---
 
 ## Continuous Integration (CI/CD)

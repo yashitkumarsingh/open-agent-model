@@ -50,6 +50,9 @@ oam risk -i agentmodel.yaml --fail-on high
 
 # Export complete HTML dashboard and OPA policy recommendations
 oam report -i agentmodel.yaml -d reports/
+
+# Compare runtime OpenTelemetry traces against design spec to find drift
+oam drift -i agentmodel.yaml -t traces.json
 ```
 
 ---

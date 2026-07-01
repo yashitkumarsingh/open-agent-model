@@ -1,0 +1,68 @@
+name: OpenAgentModel Governance Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  governance-scan:
+    name: Auditing Agent Security & Topology
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile TypeScript Compiler
+        run: npm run build
+
+      - name: 1. Validate Model Syntax & Referential Linker
+        run: |
+          echo "Verifying syntax and resolving internal references..."
+          node dist/index.js validate -i agentmodel.yaml
+
+      - name: 2. Enforce Security Risk Gate
+        # This scans the model for architectural threats.
+        # Since agentmodel.yaml contains intentional dodgy setups (to demo the tool),
+        # this will output the security findings and generate a SARIF log.
+        # We allow it to continue on error so the pipeline can upload reports.
+        continue-on-error: true
+        id: risk_scan
+        run: |
+          echo "Scanning agent topology for OWASP Agentic vulnerabilities..."
+          node dist/index.js risk -i agentmodel.yaml --fail-on high --sarif agent-risks.sarif
+
+      - name: 3. Compile Visual Maps & Governance Packs
+        run: |
+          echo "Compiling vector diagrams and HTML report dashboard..."
+          node dist/index.js report -i agentmodel.yaml -d governance-pack/
+
+      - name: Upload Security SARIF Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: oam-security-sarif
+          path: agent-risks.sarif
+
+      - name: Upload Governance Pack (Visual Maps & Reports)
+        uses: actions/upload-artifact@v4
+        with:
+          name: oam-governance-reports
+          path: governance-pack/
+
+      - name: Assert Risk Gate Result
+        # If the risk scan failed, fail the build here after reports are safely uploaded.
+        if: steps.risk_scan.outcome == 'failure'
+        run: |
+          echo "::error::OpenAgentModel static analysis detected critical/high risk issues. Check 'oam-governance-reports' artifact."
+          exit 1

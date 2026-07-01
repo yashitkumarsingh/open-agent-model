@@ -1,0 +1,85 @@
+# OpenAgentModel Ecommerce Refund System Reference
+system: ecommerce-refund-agent
+version: "1.0"
+
+agents:
+  - id: customer-support-agent
+    purpose: "Handles initial customer complaints, query orders, and delegates refund assessments."
+    framework: autogen
+    autonomy: supervised
+    memory:
+      type: vector
+      contains: [customer_messages]
+      write_access: true
+      poisoning_protection: true # Memory poisoning checks are enabled here!
+    allowed_tools:
+      - query-order-status
+      - read-customer-record
+    allowed_delegates:
+      - finance-refund-agent # A2A delegation path
+    retry_policy:
+      max_retries: 4
+      loop_detection: true
+    spend_limit:
+      max_cost_usd: 0.20
+      time_window: "1h"
+
+  - id: finance-refund-agent
+    purpose: "Validates order items, assesses financial refund limits, and executes payment refunds."
+    framework: langgraph
+    autonomy: human-approval-required
+    allowed_tools:
+      - query-order-status
+      - issue-refund-transaction
+    approval_required_for:
+      - issue-refund-transaction # Protected payment tool
+
+tools:
+  - id: query-order-status
+    type: api
+    description: "Lookup recent orders, items, and billing summaries by order ID."
+    data_classes: [customer_pii]
+    risk: medium
+
+  - id: issue-refund-transaction
+    type: payment_api
+    description: "Issue direct refunds to payment gateway token."
+    data_classes: [payment_token, refund_amount]
+    risk: high
+    requires_human_approval: true
+
+  - id: read-customer-record
+    type: api
+    description: "Read customer notes and logs."
+    risk: low
+
+  - id: update-customer-note
+    type: api
+    description: "Update notes in customer CRM."
+    risk: low
+
+mcp_servers:
+  - id: merchant-crm-mcp
+    trust_level: internal
+    exposes:
+      - read-customer-record
+      - update-customer-note
+
+data_classes:
+  - id: customer_pii
+    sensitivity: high
+    classification: pii
+
+  - id: payment_token
+    sensitivity: critical
+    classification: credentials
+
+  - id: refund_amount
+    sensitivity: medium
+    classification: financial
+
+policies:
+  - "no_agent_can_issue_refund_without_human_approval"
+  - "no_external_mcp_can_access_payment_tokens"
+  - "max_tool_calls_per_task: 15"
+  - "max_cost_per_task_usd: 0.50"

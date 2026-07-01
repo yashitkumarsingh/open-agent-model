@@ -1,0 +1,27 @@
+# OpenAgentModel Supply Chain Coordinator Configuration
+# Developer Benefit: Models trust boundaries for external supplier MCP integrations.
+system: supply-chain-system
+version: "1.0"
+
+agents:
+  - id: logistics-coordinator
+    purpose: "Analyze supply chain delays and schedule delivery transport bookings."
+    framework: native
+    autonomy: supervised
+    allowed_tools:
+      - schedule-delivery-truck
+    retry_policy:
+      max_retries: 5
+      loop_detection: true
+
+tools:
+  - id: schedule-delivery-truck
+    type: api
+    description: "Submit shipping bookings to logistics provider API."
+    risk: medium
+
+mcp_servers:
+  - id: third-party-logistics-mcp
+    trust_level: external # Restricts tools exposed by this supplier Integration
+    exposes:
+      - schedule-delivery-truck

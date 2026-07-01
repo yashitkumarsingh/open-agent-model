@@ -1,0 +1,32 @@
+# OpenAgentModel Search Retriever Configuration
+# Developer Benefit: Blocks vector storage memory poisoning from untrusted web pages.
+system: search-rag-retriever
+version: "1.0"
+
+agents:
+  - id: web-crawler-agent
+    purpose: "Scrape search engine results and update vector db indexes."
+    framework: native
+    autonomy: supervised
+    allowed_tools:
+      - scrape-web-page
+    memory:
+      type: vector
+      contains: [web_snippets]
+      write_access: true
+      poisoning_protection: true # Safety: Checks for injection attacks in scraped data
+    retry_policy:
+      max_retries: 3
+      loop_detection: true
+
+tools:
+  - id: scrape-web-page
+    type: web_search
+    description: "Fetch raw html body from open web crawls."
+    data_classes: [web_snippets]
+    risk: high
+
+data_classes:
+  - id: web_snippets
+    sensitivity: medium
+    classification: public

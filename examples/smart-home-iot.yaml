@@ -1,0 +1,30 @@
+# OpenAgentModel Smart Home Orchestrator Configuration
+# Developer Benefit: Models physical action capabilities and trust boundaries for connected IoT devices.
+system: smart-home-iot
+version: "1.0"
+
+agents:
+  - id: home-hub-orchestrator
+    purpose: "Evaluate audio voice cues and control smart locks and lights."
+    framework: native
+    autonomy: supervised
+    allowed_tools:
+      - read-device-status
+      - toggle-door-lock
+    approval_required_for:
+      - toggle-door-lock # Safety gate on physical locks
+    retry_policy:
+      max_retries: 3
+      loop_detection: true
+
+tools:
+  - id: read-device-status
+    type: api
+    description: "Read power status of smart devices."
+    risk: low
+
+  - id: toggle-door-lock
+    type: hardware_write
+    description: "Toggle door locks on front gate."
+    risk: high
+    requires_human_approval: true

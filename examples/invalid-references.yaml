@@ -1,0 +1,11 @@
+# OpenAgentModel Invalid References Test Config
+system: invalid-references-system
+version: "1.0"
+
+agents:
+  - id: bad-agent
+    purpose: "Demonstrates reference errors."
+    allowed_tools:
+      - non-existent-tool
+    allowed_delegates:
+      - missing-agent

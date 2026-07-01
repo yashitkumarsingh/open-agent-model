@@ -1,0 +1,36 @@
+# OpenAgentModel Portfolio Trader Configuration
+# Developer Benefit: Enforces token budget ceilings and cost thresholds to prevent LLM loop runaways.
+system: financial-portfolio-trader
+version: "1.0"
+
+agents:
+  - id: high-frequency-trader
+    purpose: "Evaluate market statistics and execute equity order transactions."
+    framework: langgraph
+    autonomy: autonomous
+    allowed_tools:
+      - submit-buy-order
+      - submit-sell-order
+    spend_limit:
+      max_cost_usd: 0.40 # Cost threshold: Enforces limit per task execution
+      time_window: "1m"
+    retry_policy:
+      max_retries: 5
+      loop_detection: true
+
+tools:
+  - id: submit-buy-order
+    type: api
+    description: "Submit buy orders to gateway broker."
+    risk: high
+    requires_human_approval: true # Safety lock
+
+  - id: submit-sell-order
+    type: api
+    description: "Submit sell orders to gateway broker."
+    risk: high
+    requires_human_approval: true
+
+policies:
+  - "max_cost_per_task_usd: 0.50"
+  - "max_tool_calls_per_task: 10"

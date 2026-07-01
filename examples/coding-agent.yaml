@@ -1,0 +1,39 @@
+# OpenAgentModel Software Coding Agent Configuration
+# Developer Benefit: Blocks arbitrary execution tools and CLI injection vulnerabilities in CI/CD gates.
+system: software-coding-agent
+version: "1.0"
+
+agents:
+  - id: code-reviewer-bot
+    purpose: "Analyze repository code, run linters, and verify test assertions."
+    framework: native
+    autonomy: supervised
+    allowed_tools:
+      - read-source-file
+      - run-lint-command
+    denied_tools:
+      - execute-arbitrary-sh # Threat: Blocked from running unchecked shell files
+    retry_policy:
+      max_retries: 3
+      loop_detection: true
+
+tools:
+  - id: read-source-file
+    type: read_file
+    description: "Read raw source files from checkout workspace."
+    risk: low
+
+  - id: run-lint-command
+    type: command_line
+    description: "Run npm run lint/test command blocks."
+    risk: medium
+
+  - id: execute-arbitrary-sh
+    type: command_line
+    description: "Run raw shell configurations."
+    risk: critical
+    requires_human_approval: true # Gate: Requires explicit approval if called
+
+policies:
+  - "no_agent_can_execute_arbitrary_commands_without_approval"
+  - "max_tool_calls_per_task: 5"

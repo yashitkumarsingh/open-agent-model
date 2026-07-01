@@ -1,0 +1,27 @@
+# OpenAgentModel Enterprise Recruiter Configuration
+# Developer Benefit: Blocks PII applicant leaks and ensures candidates database isolations.
+system: enterprise-recruiter
+version: "1.0"
+
+agents:
+  - id: background-checker
+    purpose: "Analyze candidate references and query database check records."
+    framework: native
+    autonomy: supervised
+    allowed_tools:
+      - query-applicant-db
+    retry_policy:
+      max_retries: 3
+      loop_detection: true
+
+tools:
+  - id: query-applicant-db
+    type: database
+    description: "Read applicant details database."
+    data_classes: [applicant_pii]
+    risk: high
+
+data_classes:
+  - id: applicant_pii
+    sensitivity: high
+    classification: pii

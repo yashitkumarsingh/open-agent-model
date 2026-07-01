@@ -1,0 +1,148 @@
+import { SystemModel, Agent, Tool, McpServer, DataClass } from '../core/model.js';
+import { Finding } from './rules.js';
+
+export function evaluatePolicies(data: SystemModel): Finding[] {
+  const findings: Finding[] = [];
+  const policies = data.policies || [];
+  const agents = data.agents || [];
+  const tools = data.tools || [];
+  const mcpServers = data.mcp_servers || [];
+  const dataClasses = data.data_classes || [];
+
+  const toolMap = new Map<string, Tool>();
+  tools.forEach((t) => toolMap.set(t.id, t));
+
+  const dataClassMap = new Map<string, DataClass>();
+  dataClasses.forEach((d) => dataClassMap.set(d.id, d));
+
+  const toolMcpMap = new Map<string, McpServer>();
+  mcpServers.forEach((mcp) => {
+    if (mcp.exposes) {
+      mcp.exposes.forEach((tid) => toolMcpMap.set(tid, mcp));
+    }
+  });
+
+  let findingCounter = 100; // Keep policy findings distinct (R-100+)
+  const nextId = () => `R-${findingCounter++}`;
+
+  policies.forEach((policyStr) => {
+    // 1. Policy: max_cost_per_task_usd: <value>
+    const costMatch = policyStr.match(/max_cost_per_task_usd:\s*([\d.]+)/);
+    if (costMatch) {
+      const maxAllowedCost = parseFloat(costMatch[1]);
+      agents.forEach((agent) => {
+        const spendLimit = agent.spend_limit;
+        if (!spendLimit || spendLimit.max_cost_usd === undefined) {
+          findings.push({
+            id: nextId(),
+            title: 'Policy Violation: Uncapped Spend Limit',
+            severity: 'high',
+            agentId: agent.id,
+            description: `Agent '${agent.id}' lacks a configured 'max_cost_usd' budget limit, violating the custom policy limit of $${maxAllowedCost.toFixed(2)}.`,
+            recommendation: `Define 'spend_limit.max_cost_usd' (equal to or less than $${maxAllowedCost.toFixed(2)}) for Agent '${agent.id}'.`,
+            owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval'
+          });
+        } else if (spendLimit.max_cost_usd > maxAllowedCost) {
+          findings.push({
+            id: nextId(),
+            title: 'Policy Violation: Cost Budget Exceeded',
+            severity: 'high',
+            agentId: agent.id,
+            description: `Agent '${agent.id}' configured spend budget ($${spendLimit.max_cost_usd.toFixed(2)}) exceeds the maximum custom policy allowance of $${maxAllowedCost.toFixed(2)}.`,
+            recommendation: `Reduce 'spend_limit.max_cost_usd' on Agent '${agent.id}' to be at or below $${maxAllowedCost.toFixed(2)}.`,
+            owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval'
+          });
+        }
+      });
+    }
+
+    // 2. Policy: max_tool_calls_per_task: <value>
+    const limitMatch = policyStr.match(/max_tool_calls_per_task:\s*(\d+)/);
+    if (limitMatch) {
+      const maxAllowedCalls = parseInt(limitMatch[1], 10);
+      agents.forEach((agent) => {
+        const retryPolicy = agent.retry_policy;
+        if (!retryPolicy || retryPolicy.max_retries === undefined) {
+          findings.push({
+            id: nextId(),
+            title: 'Policy Violation: Uncapped Execution Retries',
+            severity: 'high',
+            agentId: agent.id,
+            description: `Agent '${agent.id}' does not specify 'max_retries' limits, violating the custom loop execution policy limit of ${maxAllowedCalls} calls.`,
+            recommendation: `Add 'retry_policy.max_retries' (equal to or less than ${maxAllowedCalls}) to Agent '${agent.id}'.`,
+            owaspMapping: 'OWASP-4: Model Denial of Service / Execution Loops'
+          });
+        } else if (retryPolicy.max_retries > maxAllowedCalls) {
+          findings.push({
+            id: nextId(),
+            title: 'Policy Violation: Max Tool Calls Exceeded',
+            severity: 'high',
+            agentId: agent.id,
+            description: `Agent '${agent.id}' maximum retries (${retryPolicy.max_retries}) exceeds the custom policy allowance of ${maxAllowedCalls} calls.`,
+            recommendation: `Reduce 'retry_policy.max_retries' on Agent '${agent.id}' to be at or below ${maxAllowedCalls}.`,
+            owaspMapping: 'OWASP-4: Model Denial of Service / Execution Loops'
+          });
+        }
+      });
+    }
+
+    // 3. Policy: no_external_mcp_can_access_payment_tokens
+    if (policyStr === 'no_external_mcp_can_access_payment_tokens') {
+      mcpServers.forEach((mcp) => {
+        const isExternal = mcp.trust_level === 'external' || mcp.trust_level === 'untrusted';
+        if (isExternal && mcp.exposes) {
+          mcp.exposes.forEach((toolId) => {
+            const tool = toolMap.get(toolId);
+            if (tool && tool.data_classes) {
+              tool.data_classes.forEach((dcId) => {
+                const dc = dataClassMap.get(dcId);
+                if (dc && (dc.classification === 'credentials' || dcId.toLowerCase().includes('token'))) {
+                  findings.push({
+                    id: nextId(),
+                    title: 'Policy Violation: External MCP Accesses Credentials',
+                    severity: 'critical',
+                    agentId: 'system',
+                    description: `External/untrusted MCP Server '${mcp.id}' exposes tool '${toolId}' which accesses sensitive token/credentials data class '${dcId}', violating the strict isolation policy.`,
+                    recommendation: `Revoke the exposure of tool '${toolId}' on MCP Server '${mcp.id}', or migrate the server trust level to 'internal'.`,
+                    owaspMapping: 'OWASP-6: Sensitive Information Disclosure',
+                    context: { toolId, mcpId: mcp.id, dataClassId: dcId }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    // 4. Policy: no_agent_can_issue_refund_without_human_approval
+    if (policyStr === 'no_agent_can_issue_refund_without_human_approval') {
+      agents.forEach((agent) => {
+        const allowedTools = agent.allowed_tools || [];
+        allowedTools.forEach((toolId) => {
+          if (toolId.toLowerCase().includes('refund')) {
+            const tool = toolMap.get(toolId);
+            const toolRequiresApproval = tool?.requires_human_approval === true;
+            const agentApproves = agent.approval_required_for?.includes(toolId);
+            const agentHumanApproval = agent.autonomy === 'human-approval-required';
+
+            if (!toolRequiresApproval && !agentApproves && !agentHumanApproval) {
+              findings.push({
+                id: nextId(),
+                title: 'Policy Violation: Unapproved Refund Capability',
+                severity: 'critical',
+                agentId: agent.id,
+                description: `Agent '${agent.id}' can invoke refund capability tool '${toolId}' without human approval, violating the system-wide refund gate policy.`,
+                recommendation: `Add '${toolId}' to Agent '${agent.id}' 'approval_required_for' list, or set 'requires_human_approval: true' on tool '${toolId}'.`,
+                owaspMapping: 'OWASP-8: Excessive Agency / Autonomy without Approval',
+                context: { toolId }
+              });
+            }
+          }
+        });
+      });
+    }
+  });
+
+  return findings;
+}

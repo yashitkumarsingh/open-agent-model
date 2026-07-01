@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenAgentModel",
+  "type": "object",
+  "properties": {
+    "system": {
+      "type": "string",
+      "description": "The name of the agentic system."
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the system definition."
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier of the agent."
+          },
+          "purpose": {
+            "type": "string",
+            "description": "The core purpose or goal of the agent."
+          },
+          "framework": {
+            "type": "string",
+            "description": "The framework used (e.g. langgraph, autogen, crewai)."
+          },
+          "autonomy": {
+            "type": "string",
+            "enum": ["autonomous", "supervised", "human-approval-required", "semi-autonomous"],
+            "description": "Autonomy level of the agent."
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["vector", "key-value", "relational", "cache", "none"]
+              },
+              "contains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Data classes or contents stored in memory."
+              },
+              "write_access": {
+                "type": "boolean",
+                "description": "Whether the agent has runtime write access to memory."
+              },
+              "poisoning_protection": {
+                "type": "boolean",
+                "description": "Whether checks are run to prevent injection/poisoning of memory."
+              }
+            },
+            "required": ["type"]
+          },
+          "allowed_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of tool IDs this agent can invoke."
+          },
+          "denied_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of tool IDs explicitly blocked for this agent."
+          },
+          "approval_required_for": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Actions or tools requiring human-in-the-loop approval before executing."
+          },
+          "allowed_delegates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Other agent IDs this agent is allowed to delegate tasks to."
+          },
+          "retry_policy": {
+            "type": "object",
+            "properties": {
+              "max_retries": {
+                "type": "integer"
+              },
+              "loop_detection": {
+                "type": "boolean"
+              },
+              "failure_handling": {
+                "type": "string"
+              }
+            }
+          },
+          "spend_limit": {
+            "type": "object",
+            "properties": {
+              "max_cost_usd": {
+                "type": "number"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "time_window": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": ["id", "purpose"]
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of tool (e.g. api, payment_api, database, read_file, write_file, web_search, command_line)."
+          },
+          "description": {
+            "type": "string"
+          },
+          "data_classes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Data classes this tool accesses or manipulates."
+          },
+          "risk": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "requires_human_approval": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "type"]
+      }
+    },
+    "mcp_servers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trust_level": {
+            "type": "string",
+            "enum": ["internal", "partner", "external", "untrusted"]
+          },
+          "exposes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tool IDs exposed by this MCP server."
+          }
+        },
+        "required": ["id", "trust_level"]
+      }
+    },
+    "data_classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "classification": {
+            "type": "string",
+            "enum": ["pii", "financial", "credentials", "internal_data", "public"]
+          }
+        },
+        "required": ["id", "sensitivity", "classification"]
+      }
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["system", "version", "agents"]
+}

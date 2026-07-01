@@ -1,0 +1,31 @@
+# OpenAgentModel Legal Document Analyst Configuration
+# Developer Benefit: Models read-only data assets to guarantee audit logs for contract indexing.
+system: legal-document-analyst
+version: "1.0"
+
+agents:
+  - id: contract-reviewer
+    purpose: "Analyze contract files and match clauses against corporate policies."
+    framework: native
+    autonomy: supervised
+    allowed_tools:
+      - query-contract-db
+    memory:
+      type: cache
+      contains: [contract_metadata]
+      write_access: false # Read-only memory constraint
+    retry_policy:
+      max_retries: 4
+      loop_detection: true
+
+tools:
+  - id: query-contract-db
+    type: database
+    description: "Read legal agreements database."
+    data_classes: [contract_metadata]
+    risk: low
+
+data_classes:
+  - id: contract_metadata
+    sensitivity: high
+    classification: internal_data

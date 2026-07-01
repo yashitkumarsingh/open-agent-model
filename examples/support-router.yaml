@@ -1,0 +1,41 @@
+# OpenAgentModel Support Router Configuration
+# Developer Benefit: Flags A2A privilege delegation paths during code reviews.
+system: support-router-system
+version: "1.0"
+
+agents:
+  - id: public-router-agent
+    purpose: "Evaluate inbound customer emails and delegate state reviews."
+    framework: crewai
+    autonomy: supervised
+    allowed_delegates:
+      - account-manager-agent # Threat: A2A delegation path to higher-privilege node
+    allowed_tools:
+      - route-ticket
+    retry_policy:
+      max_retries: 3
+
+  - id: account-manager-agent
+    purpose: "Modify active customer subscriptions."
+    framework: langgraph
+    autonomy: human-approval-required
+    allowed_tools:
+      - write-subscription-db
+    approval_required_for:
+      - write-subscription-db
+
+tools:
+  - id: route-ticket
+    type: api
+    description: "Route support tickets to appropriate queues."
+    risk: low
+
+  - id: write-subscription-db
+    type: database
+    description: "Modify user subscription records in database."
+    risk: high
+    requires_human_approval: true
+
+policies:
+  - "no_agent_can_modify_subscriptions_without_approval"
+  - "max_tool_calls_per_task: 5"

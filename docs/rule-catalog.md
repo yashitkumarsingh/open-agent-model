@@ -86,6 +86,16 @@ Severity: policy-defined, default high
 
 Evaluates experimental declarative policy objects in `policies`. This rule is intentionally small in scope and should be treated as an early policy authoring surface rather than a complete policy language.
 
+## R-015: Dangerous Tool Input Shape
+
+Severity: medium
+
+Inspects `tool.input_schema.properties` for parameter names matching known high-risk patterns: `command`, `shell`, `script`, `sql`, `query`, `file_path`, `path`, `url`, `amount`, `value`, `account_id`, `recipient`, `destination`, `delete`, `overwrite`, `webhook`, and `callback`.
+
+Flags tools whose declared `risk` may underestimate their actual capability. Only fires when risk is not already declared `high` or `critical` — those tools are already covered by other rules.
+
+This rule is most valuable for MCP-imported tools, where `input_schema` is populated from the MCP `tools/list` response. A tool imported as `risk: medium` but exposing a `command` parameter may be capable of arbitrary code execution.
+
 ## Current Limits
 
 Rules are static checks over `agentmodel.yaml`; they do not prove runtime enforcement. Generated Rego-style examples are starter material, not a guarantee that an Open Policy Agent deployment is active. Runtime drift checks currently support OpenAgentModel span names and selected `gen_ai.*` attributes, with broader adapter work tracked on the roadmap.

@@ -9,6 +9,8 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
+const ALLOWED_TRUST_LEVELS = new Set(['internal', 'partner', 'external', 'untrusted']);
+
 export function importMcpCommand(options: { 
   input: string; 
   mcpId: string; 
@@ -17,6 +19,11 @@ export function importMcpCommand(options: {
 }) {
   const inputPath = path.resolve(options.input);
   const trustLevel = options.trustLevel || 'external';
+
+  // Validate --trust-level before any file I/O
+  if (!ALLOWED_TRUST_LEVELS.has(trustLevel)) {
+    fail(`Invalid --trust-level '${trustLevel}'. Must be one of: internal, partner, external, untrusted.`);
+  }
 
   if (!fs.existsSync(inputPath)) {
     fail(`agentmodel file not found at ${inputPath}`);

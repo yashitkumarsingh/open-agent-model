@@ -219,7 +219,7 @@ tools:
 ```
 `source.mcp_server` must reference a declared `mcp_servers` entry. When `source.kind` is `mcp` but `source.mcp_server` is missing or points to an undeclared server, `oam validate` will fail with a referential error.
 
-Annotations from MCP servers are treated as **advisory signals**. `destructive_hint: true` strengthens risk analysis. `read_only_hint` is only honoured from `internal` sources — annotations from `external` or `untrusted` MCP servers are not sufficient on their own to reduce risk severity.
+Annotations from MCP servers are treated as **advisory signals**. `destructive_hint: true` strengthens risk analysis for any MCP-imported tool. `read_only_hint` is preserved in the model for human review but does not currently reduce risk severity for MCP-imported tools — annotations from external servers cannot be independently verified by static analysis.
 
 ### Built-In Governance Rules
 `oam risk` includes static checks for:
@@ -235,6 +235,7 @@ Annotations from MCP servers are treated as **advisory signals**. `destructive_h
 - Agents that allow and deny the same tool.
 - Delegation cycles.
 - Autonomous agents with command-line, write-file, payout, or system-altering tools.
+- MCP-imported tools with suspicious input parameter names (command, shell, SQL, file path, URL, financial, or destructive parameters) whose declared risk may be understated (R-015).
 
 ### Experimental Declarative Policies
 ```yaml

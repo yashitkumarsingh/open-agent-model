@@ -406,13 +406,16 @@ test('Risk Engine Rules Test Suite', async (t) => {
     const findings = runRiskChecks(model);
 
     // run-script should be flagged for suspicious input params
-    const hasDangerousInput = findings.some(f => f.id === 'R-015-INP' && f.agentId === 'run-script');
+    const hasDangerousInput = findings.some(f => f.id === 'R-015-INP' && f.context?.toolId === 'run-script');
     assert.strictEqual(hasDangerousInput, true, 'R-015 should flag tools with command/shell input params at medium risk');
 
     // safe-lookup should NOT be flagged
-    const flaggedSafeTool = findings.some(f => f.id === 'R-015-INP' && f.agentId === 'safe-lookup');
+    const flaggedSafeTool = findings.some(f => f.id === 'R-015-INP' && f.context?.toolId === 'safe-lookup');
     assert.strictEqual(flaggedSafeTool, false, 'R-015 should not flag benign search_term parameters');
 
+    // R-015 findings should use agentId='system' (not the tool ID) to avoid semantic confusion
+    const systemSubject = findings.find(f => f.id === 'R-015-INP');
+    assert.strictEqual(systemSubject?.agentId, 'system', 'R-015 findings should use agentId="system" with context.toolId for the subject tool');
     // Already-declared high/critical risk tools should not be double-flagged
     const highRiskModel: SystemModel = {
       system: 'high-risk-test',

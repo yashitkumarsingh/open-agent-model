@@ -71,7 +71,7 @@ program
 
 program
   .command('import-mcp')
-  .description('Import tools and configuration schemas dynamically from an MCP server')
+  .description('Import MCP tools from a saved tools/list JSON file')
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
   .option('--mcp-id <id>', 'Identifier for the MCP server', 'my-mcp-server')
   .option('--tools-file <file>', 'JSON file containing exposed MCP tools definitions')

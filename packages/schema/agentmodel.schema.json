@@ -3,13 +3,22 @@
   "title": "OpenAgentModel",
   "type": "object",
   "additionalProperties": false,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    }
+  },
   "properties": {
     "system": {
       "type": "string",
+      "minLength": 1,
       "description": "The name of the agentic system."
     },
     "version": {
       "type": "string",
+      "minLength": 1,
       "description": "The version of the system definition."
     },
     "models": {
@@ -20,7 +29,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string",
+            "$ref": "#/$defs/id",
             "description": "Unique model ID."
           },
           "provider": {
@@ -34,7 +43,7 @@
           "allowed_for": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "List of agent IDs allowed to use this model."
           },
@@ -64,7 +73,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string",
+            "$ref": "#/$defs/id",
             "description": "Unique identity ID."
           },
           "type": {
@@ -106,7 +115,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string",
+            "$ref": "#/$defs/id",
             "description": "Unique identifier of the agent."
           },
           "purpose": {
@@ -114,7 +123,7 @@
             "description": "The core purpose or goal of the agent."
           },
           "model": {
-            "type": "string",
+            "$ref": "#/$defs/id",
             "description": "Model catalog ID this agent is expected to use."
           },
           "framework": {
@@ -137,7 +146,7 @@
               "contains": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/$defs/id"
                 },
                 "description": "Data classes or contents stored in memory."
               },
@@ -155,28 +164,28 @@
           "allowed_tools": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "List of tool IDs this agent can invoke."
           },
           "denied_tools": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "List of tool IDs explicitly blocked for this agent."
           },
           "approval_required_for": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "Actions or tools requiring human-in-the-loop approval before executing."
           },
           "allowed_delegates": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "Other agent IDs this agent is allowed to delegate tasks to."
           },
@@ -221,7 +230,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string"
+            "$ref": "#/$defs/id"
           },
           "type": {
             "type": "string",
@@ -233,7 +242,7 @@
           "data_classes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "Data classes this tool accesses or manipulates."
           },
@@ -250,7 +259,7 @@
             "description": "Operational impact profile of tool execution."
           },
           "auth_identity": {
-            "type": "string",
+            "$ref": "#/$defs/id",
             "description": "The credentials ID referenced to perform authentication."
           },
           "required_scopes": {
@@ -298,7 +307,7 @@
                 "description": "Origin type of this tool definition."
               },
               "mcp_server": {
-                "type": "string",
+                "$ref": "#/$defs/id",
                 "description": "ID of the MCP server this tool was discovered from."
               },
               "original_name": {
@@ -342,7 +351,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string"
+            "$ref": "#/$defs/id"
           },
           "trust_level": {
             "type": "string",
@@ -351,7 +360,7 @@
           "exposes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/id"
             },
             "description": "Tool IDs exposed by this MCP server."
           }
@@ -366,7 +375,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string"
+            "$ref": "#/$defs/id"
           },
           "sensitivity": {
             "type": "string",
@@ -377,7 +386,7 @@
             "enum": ["pii", "financial", "credentials", "internal_data", "public"]
           },
           "inherits_from": {
-            "type": "string",
+            "$ref": "#/$defs/id",
             "description": "ID of another data class this data class inherits classification rules from."
           }
         },
@@ -396,7 +405,7 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "type": "string"
+                "$ref": "#/$defs/id"
               },
               "severity": {
                 "type": "string",

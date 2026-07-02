@@ -166,35 +166,48 @@ test('MCP Import Command Test Suite', async (t) => {
     }
   });
 
+  await t.test('7b. Empty or missing --mcp-id is rejected before file mutation', () => {
+    const modelPath = writeTempModel('bad-mcp-id');
+    const toolsPath = writeTempTools('bad-mcp-id', [{ name: 'some-tool' }]);
+    const originalContent = fs.readFileSync(modelPath, 'utf8');
+    try {
+      assert.throws(() => {
+        execSync(
+          `node dist/index.js import-mcp --input ${modelPath} --mcp-id "   " --trust-level external --tools-file ${toolsPath}`,
+          { stdio: ['pipe', 'pipe', 'pipe'], cwd: ROOT, encoding: 'utf8' }
+        );
+      }, /Command failed/, 'Empty --mcp-id should exit with error');
+      // Original file must not have been modified
+      const afterContent = fs.readFileSync(modelPath, 'utf8');
+      assert.strictEqual(afterContent, originalContent, 'Original model file must be unchanged after empty mcp-id rejection');
+    } finally {
+      cleanup(modelPath, toolsPath);
+    }
+  });
+
   await t.test('8. Original file is unchanged when post-mutation validation fails', () => {
-    // Force a post-mutation schema failure by importing a tool whose source.mcp_server
-    // points to an MCP server that does not exist. The importer creates the mcp_servers
-    // entry from --mcp-id, so the linker will validate the tool source after mutation.
-    // We can simulate a bad state by writing a tools-file that will cause the post-mutation
-    // model to fail the linker (source referential check) by manually constructing the
-    // scenario: inject a tool with source.mcp_server pointing to a ghost server via
-    // a pre-poisoned model that the importer will re-validate post-mutation.
-    //
-    // Simpler approach: use a tools-file with a tool whose name would create a duplicate
-    // tool ID in the catalog (tool already exists in model with same ID). This is allowed
-    // by the importer (it skips existing tools), so we use the trust-level failure which
-    // is guaranteed to reject before write.
-    //
-    // For a true post-mutation test, we verify the rename only happens on clean validation:
-    // Use an empty mcp-id that triggers the MCP server to be created, then verify the temp
-    // file is not left behind on failure.
+    // Force a post-mutation schema failure by importing a tool whose ID contains an invalid character
+    // according to the new schema ID pattern (minLength: 1, pattern: ^[A-Za-z0-9._:-]+$).
+    // A tool named 'tool#invalid' is accepted by the importer's basic name check, but violates the
+    // schema validation run on the temp file.
     const modelPath = writeTempModel('post-mutation');
-    const toolsPath = writeTempTools('post-mutation', [{ name: 'valid-tool' }]);
+    const toolsPath = writeTempTools('post-mutation', [{ name: 'tool#invalid' }]);
     const originalContent = fs.readFileSync(modelPath, 'utf8');
     const tempPath = `${modelPath}.oam-import.tmp`;
     try {
-      // Run a valid import first to confirm it succeeds
-      execSync(
-        `node dist/index.js import-mcp --input ${modelPath} --mcp-id post-mcp --trust-level external --tools-file ${toolsPath}`,
-        { encoding: 'utf8', cwd: ROOT }
-      );
-      // Temp file must NOT persist after a successful run (cleaned up by rename)
-      assert.strictEqual(fs.existsSync(tempPath), false, 'Temp file must not remain after a successful import');
+      assert.throws(() => {
+        execSync(
+          `node dist/index.js import-mcp --input ${modelPath} --mcp-id post-mcp --trust-level external --tools-file ${toolsPath}`,
+          { stdio: ['pipe', 'pipe', 'pipe'], cwd: ROOT, encoding: 'utf8' }
+        );
+      }, /Command failed/, 'Importing a tool with an invalid ID pattern must fail post-mutation validation');
+
+      // Temp file must NOT persist after validation fails (should be deleted)
+      assert.strictEqual(fs.existsSync(tempPath), false, 'Temp file must be cleaned up on validation failure');
+
+      // Original file must not have been overwritten or modified
+      const afterContent = fs.readFileSync(modelPath, 'utf8');
+      assert.strictEqual(afterContent, originalContent, 'Original model file must remain unchanged on validation failure');
     } finally {
       cleanup(modelPath, toolsPath, tempPath);
     }

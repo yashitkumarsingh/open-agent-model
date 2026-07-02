@@ -20,10 +20,15 @@ export function importMcpCommand(options: {
     const inputPath = path.resolve(options.input);
     const trustLevel = options.trustLevel || 'external';
 
-  // Validate --trust-level before any file I/O
-  if (!ALLOWED_TRUST_LEVELS.has(trustLevel)) {
-    fail(`Invalid --trust-level '${trustLevel}'. Must be one of: internal, partner, external, untrusted.`);
-  }
+    const mcpId = options.mcpId?.trim();
+    if (!mcpId) {
+      fail(`--mcp-id must be a non-empty identifier.`);
+    }
+
+    // Validate --trust-level before any file I/O
+    if (!ALLOWED_TRUST_LEVELS.has(trustLevel)) {
+      fail(`Invalid --trust-level '${trustLevel}'. Must be one of: internal, partner, external, untrusted.`);
+    }
 
   if (!fs.existsSync(inputPath)) {
     fail(`agentmodel file not found at ${inputPath}`);
@@ -83,10 +88,10 @@ export function importMcpCommand(options: {
   if (!data.mcp_servers) {
     data.mcp_servers = [];
   }
-  let mcp = data.mcp_servers.find((m) => m.id === options.mcpId);
+  let mcp = data.mcp_servers.find((m) => m.id === mcpId);
   if (!mcp) {
     mcp = {
-      id: options.mcpId,
+      id: mcpId,
       trust_level: trustLevel as 'internal' | 'partner' | 'external' | 'untrusted',
       exposes: []
     };
@@ -117,7 +122,7 @@ export function importMcpCommand(options: {
         requires_human_approval: false,
         source: {
           kind: 'mcp',
-          mcp_server: options.mcpId,
+          mcp_server: mcpId,
           original_name: toolId
         }
       };

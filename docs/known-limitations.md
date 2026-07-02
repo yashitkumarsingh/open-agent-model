@@ -14,9 +14,7 @@ A future version should use YAML CST/source-location metadata.
 
 ## MCP Import
 
-`oam import-mcp` currently imports from a local `--tools-file` containing MCP `tools/list`-style JSON. Live MCP server discovery is roadmap work.
-
-Imported tools use conservative defaults unless the input file contains richer metadata that a future importer can map into risk, side-effect, auth, and data-class fields.
+`oam import-mcp` currently imports from a local `--tools-file` containing MCP `tools/list`-style JSON. It preserves source provenance, input_schema, and selected annotations, but it does not yet infer risk, side_effect, auth_identity, required_scopes, or data_classes from MCP metadata. Live MCP server discovery is roadmap work.
 
 ## Runtime Drift
 

@@ -8,6 +8,7 @@ import { generatePolicyRecommendationsMd } from '../report/policy-template.js';
 import { generateHtmlReport } from '../report/html-template.js';
 import { generateSarifReport } from '../report/sarif-builder.js';
 import { generateOtelSchema } from '../report/otel-exporter.js';
+import { generateRegoPolicy } from '../report/rego-compiler.js';
 import { getPackageVersion } from '../core/version.js';
 
 function hashFileSha256(filePath: string): string {
@@ -16,7 +17,7 @@ function hashFileSha256(filePath: string): string {
   return hash.digest('hex');
 }
 
-export function reportCommand(options: { input: string; dir: string; asOf?: string }) {
+export function reportCommand(options: { input: string; dir: string; asOf?: string }): number {
   const inputPath = path.resolve(options.input);
   const outputDir = path.resolve(options.dir);
 
@@ -25,12 +26,12 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
   if (!validation.valid) {
     console.error(`\x1b[31mError validating agent model before generating report:\x1b[0m`);
     validation.errors?.forEach((err) => console.error(`  - ${err}`));
-    process.exit(1);
+    return 1;
   }
 
   if (!validation.data) {
     console.error(`\x1b[31mError: Loaded config data is empty.\x1b[0m`);
-    process.exit(1);
+    return 1;
   }
 
   const data = validation.data;
@@ -124,9 +125,11 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
   const htmlPath = path.join(outputDir, 'agent-risk-report.html');
   const sarifPath = path.join(outputDir, 'agent-risks.sarif');
   const otelPath = path.join(outputDir, 'otel-schema.json');
+  const regoPath = path.join(outputDir, 'agent-policy.rego');
 
   const sarif = generateSarifReport(findings, options.input);
   const otel = generateOtelSchema(data);
+  const rego = generateRegoPolicy(data);
 
   try {
     fs.writeFileSync(svgPath, svg, 'utf8');
@@ -135,6 +138,7 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
     fs.writeFileSync(htmlPath, html, 'utf8');
     fs.writeFileSync(sarifPath, sarif, 'utf8');
     fs.writeFileSync(otelPath, otel, 'utf8');
+    fs.writeFileSync(regoPath, rego, 'utf8');
 
     console.log(`\n\x1b[32m✔ Successfully generated OpenAgentModel Governance Pack:\x1b[0m`);
     console.log(`  - Visual Map:          \x1b[34m${svgPath}\x1b[0m`);
@@ -142,9 +146,11 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
     console.log(`  - Policies (Rego/AGT): \x1b[34m${policyPath}\x1b[0m`);
     console.log(`  - SARIF Code Quality:  \x1b[34m${sarifPath}\x1b[0m`);
     console.log(`  - OTel Telemetry:      \x1b[34m${otelPath}\x1b[0m`);
+    console.log(`  - OPA/Rego Compiler:   \x1b[34m${regoPath}\x1b[0m`);
     console.log(`  - Interactive Report:  \x1b[34m${htmlPath}\x1b[0m\n`);
-  } catch (error: any) {
-    console.error(`Error saving report packages: ${error?.message || error}`);
-    process.exit(1);
+    return 0;
+  } catch (error: unknown) {
+    console.error(`Error saving report packages: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
   }
 }

@@ -60,7 +60,12 @@ export function generateSarifReport(findings: Finding[], modelPath: string): str
       targetKey = f.context.mcpId;
     }
 
-    const line = targetKey ? findLineNumber(rawContent, targetKey) : 1;
+    const line = targetKey ? findLineNumber(rawContent, targetKey, {
+      agentId: f.agentId !== 'system' ? f.agentId : undefined,
+      toolId: f.context?.toolId,
+      dataClassId: f.context?.dataClassId,
+      mcpId: f.context?.mcpId
+    }) : 1;
 
     return {
       ruleId: ruleId,

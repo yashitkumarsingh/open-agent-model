@@ -5,8 +5,7 @@ import { validateYaml } from './validate.js';
 import type { Tool } from '../core/model.js';
 
 function fail(msg: string): never {
-  console.error(`Error: ${msg}`);
-  process.exit(1);
+  throw new Error(msg);
 }
 
 const ALLOWED_TRUST_LEVELS = new Set(['internal', 'partner', 'external', 'untrusted']);
@@ -16,9 +15,10 @@ export function importMcpCommand(options: {
   mcpId: string; 
   toolsFile?: string; 
   trustLevel?: string; 
-}) {
-  const inputPath = path.resolve(options.input);
-  const trustLevel = options.trustLevel || 'external';
+}): number {
+  try {
+    const inputPath = path.resolve(options.input);
+    const trustLevel = options.trustLevel || 'external';
 
   // Validate --trust-level before any file I/O
   if (!ALLOWED_TRUST_LEVELS.has(trustLevel)) {
@@ -29,12 +29,11 @@ export function importMcpCommand(options: {
     fail(`agentmodel file not found at ${inputPath}`);
   }
 
-  // Step 1: Validate the model BEFORE any mutation
   const validation = validateYaml(inputPath);
   if (!validation.valid) {
     console.error(`Error: agentmodel validation failed before MCP import.`);
     validation.errors?.forEach((err) => console.error(`  - ${err}`));
-    process.exit(1);
+    return 1;
   }
 
   const data = validation.data;
@@ -158,7 +157,7 @@ export function importMcpCommand(options: {
     fs.unlinkSync(tempPath); // Clean up temp file
     console.error(`Error: The imported tools produced an invalid agentmodel configuration.`);
     postValidation.errors?.forEach((err) => console.error(`  - ${err}`));
-    process.exit(1);
+    return 1;
   }
 
   // Step 6: Atomically rename temp → original
@@ -172,4 +171,9 @@ export function importMcpCommand(options: {
   console.log(`  - Trust zone boundary set to: \x1b[34m${trustLevel.toUpperCase()}\x1b[0m`);
   console.log(`  - Imported tool count:          \x1b[34m${toolsToImport.length}\x1b[0m`);
   console.log(`  - Updated configuration saved to ${options.input}\n`);
+  return 0;
+  } catch (error: unknown) {
+    console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
 }

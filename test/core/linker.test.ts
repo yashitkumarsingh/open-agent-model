@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 // Setup ES module filename resolver
@@ -218,6 +219,71 @@ agents:
     }
   });
 
+  await t.test('5b. Federated IAM Identity Pointer Checks', () => {
+    const tempFile = path.resolve(__dirname, 'temp-federated-identity.yaml');
+
+    // Case A: Missing provider_ref -> fail
+    const missingRefYaml = `
+system: test-system
+version: "1.0"
+identities:
+  - id: bad-federation
+    type: federated_role
+agents:
+  - id: agent-a
+    purpose: "Test"
+`;
+    fs.writeFileSync(tempFile, missingRefYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'federated_role without provider_ref should fail');
+      assert.match(res.errors?.join('\n') || '', /missing the 'provider_ref' field/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    // Case B: Invalid provider_ref prefix -> fail
+    const invalidPrefixYaml = `
+system: test-system
+version: "1.0"
+identities:
+  - id: bad-prefix
+    type: federated_role
+    provider_ref: invalid-arn:aws:iam::role
+agents:
+  - id: agent-a
+    purpose: "Test"
+`;
+    fs.writeFileSync(tempFile, invalidPrefixYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'federated_role with invalid provider_ref prefix should fail');
+      assert.match(res.errors?.join('\n') || '', /invalid provider_ref/);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    // Case C: Valid prefix -> success
+    const validYaml = `
+system: test-system
+version: "1.0"
+identities:
+  - id: good-federation
+    type: federated_role
+    provider_ref: arn:aws:iam::123456789012:role/MyAgentRole
+agents:
+  - id: agent-a
+    purpose: "Test"
+`;
+    fs.writeFileSync(tempFile, validYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, true, 'federated_role with valid prefix should succeed');
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
   await t.test('6. Agent Model Binding and Identity Scope Checks', () => {
     const disallowedModelYaml = `
 system: test-system
@@ -410,6 +476,82 @@ mcp_servers:
       assert.strictEqual(res.valid, false, 'source.kind=mcp without mcp_server should fail validation');
       const errorText = res.errors?.join('\n') ?? '';
       assert.match(errorText, /source\.kind.*mcp.*missing.*source\.mcp_server|source\.mcp_server/, 'Error should flag the missing mcp_server field');
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
+  await t.test('9. DataClass inherits_from validation and cycle detection', () => {
+    const tempFile = path.join(os.tmpdir(), 'dc-inheritance-test.yaml');
+
+    // Case A: Missing inherits_from target -> fail
+    const missingTargetYaml = `
+system: dc-test-a
+version: "1.0"
+agents:
+  - id: agent-a
+    purpose: "Test"
+data_classes:
+  - id: child-dc
+    sensitivity: high
+    classification: pii
+    inherits_from: ghost-dc
+`;
+    fs.writeFileSync(tempFile, missingTargetYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'Inheriting from undeclared data class should fail');
+      assert.match(res.errors?.join('\n') ?? '', /inherits_from.*ghost-dc/, 'Error should mention the missing inherits_from class');
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    // Case B: Inheritance cycle (A -> B -> A) -> fail
+    const cycleYaml = `
+system: dc-test-b
+version: "1.0"
+agents:
+  - id: agent-b
+    purpose: "Test"
+data_classes:
+  - id: class-a
+    sensitivity: low
+    classification: public
+    inherits_from: class-b
+  - id: class-b
+    sensitivity: low
+    classification: public
+    inherits_from: class-a
+`;
+    fs.writeFileSync(tempFile, cycleYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, false, 'Inheritance cycle should fail validation');
+      assert.match(res.errors?.join('\n') ?? '', /inheritance cycle detected/, 'Error should identify the inheritance cycle');
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+
+    // Case C: Valid chain (A -> B) -> success
+    const validYaml = `
+system: dc-test-c
+version: "1.0"
+agents:
+  - id: agent-c
+    purpose: "Test"
+data_classes:
+  - id: parent-dc
+    sensitivity: high
+    classification: pii
+  - id: child-dc
+    sensitivity: high
+    classification: pii
+    inherits_from: parent-dc
+`;
+    fs.writeFileSync(tempFile, validYaml, 'utf8');
+    try {
+      const res = validateYaml(tempFile);
+      assert.strictEqual(res.valid, true, 'Valid inherits_from chain should pass validation');
     } finally {
       if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
     }

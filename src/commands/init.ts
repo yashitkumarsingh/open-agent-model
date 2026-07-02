@@ -105,19 +105,20 @@ policies:
       tool.requires_human_approval: true
 `;
 
-export function initCommand(options: { output: string }) {
+export function initCommand(options: { output: string }): number {
   const outputPath = path.resolve(options.output);
   
   if (fs.existsSync(outputPath)) {
     console.error(`Error: File already exists at ${outputPath}`);
-    process.exit(1);
+    return 1;
   }
 
   try {
     fs.writeFileSync(outputPath, defaultTemplate, 'utf8');
     console.log(`\x1b[32m✔ Successfully initialized OpenAgentModel config at ${outputPath}\x1b[0m`);
-  } catch (error: any) {
-    console.error(`Error writing initialization template: ${error?.message || error}`);
-    process.exit(1);
+    return 0;
+  } catch (error: unknown) {
+    console.error(`Error writing initialization template: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
   }
 }

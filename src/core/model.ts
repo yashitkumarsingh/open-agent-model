@@ -26,6 +26,8 @@ export interface IdentityCatalogEntry {
   owner?: string;
   expires_at?: string;
   scopes?: string[];
+  provider_ref?: string;
+  max_session_duration?: number;
 }
 
 export interface DeclarativePolicy {
@@ -137,6 +139,7 @@ export interface DataClass {
   id: string;
   sensitivity: DataSensitivity;
   classification: DataClassification;
+  inherits_from?: string;
 }
 
 export type DataSensitivity = 'low' | 'medium' | 'high' | 'critical';

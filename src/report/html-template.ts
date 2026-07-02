@@ -7,7 +7,7 @@ export function generateHtmlReport(
   svg: string,
   findings: Finding[],
   policyMd: string,
-  abomJson: any
+  abomJson: unknown
 ): string {
   // Compute risk score (0-100)
   let scorePoints = 0;
@@ -659,12 +659,12 @@ export function generateHtmlReport(
                 <tbody>
                   <tr>
                     <td><strong>Human-in-the-Loop Gate</strong></td>
-                    <td>${data.agents?.some((a: any) => a.autonomy === 'human-approval-required') ? '<span style="color: #10b981;">✔ Standardised</span>' : '<span style="color: #ef4444;">✘ Fully Autonomous</span>'}</td>
+                    <td>${data.agents?.some((a: Agent) => a.autonomy === 'human-approval-required') ? '<span style="color: #10b981;">✔ Standardised</span>' : '<span style="color: #ef4444;">✘ Fully Autonomous</span>'}</td>
                     <td>Ensures refund/dangerous paths verify transactions manually.</td>
                   </tr>
                   <tr>
                     <td><strong>Memory Poisoning Protection</strong></td>
-                    <td>${data.agents?.every((a: any) => !a.memory || a.memory.poisoning_protection) ? '<span style="color: #10b981;">✔ Fully Protected</span>' : '<span style="color: #f59e0b;">⚠ Partial Protection</span>'}</td>
+                    <td>${data.agents?.every((a: Agent) => !a.memory || a.memory.poisoning_protection) ? '<span style="color: #10b981;">✔ Fully Protected</span>' : '<span style="color: #f59e0b;">⚠ Partial Protection</span>'}</td>
                     <td>Memory writes are monitored for instruction injections.</td>
                   </tr>
                   <tr>
@@ -674,7 +674,7 @@ export function generateHtmlReport(
                   </tr>
                   <tr>
                     <td><strong>External MCP Servers</strong></td>
-                    <td>${mcpServers.some((m: any) => m.trust_level === 'external') ? '<span style="color: #f97316;">⚠ External MCPS</span>' : '<span style="color: #10b981;">✔ Internal-Only</span>'}</td>
+                    <td>${mcpServers.some((m: McpServer) => m.trust_level === 'external') ? '<span style="color: #f97316;">⚠ External MCPS</span>' : '<span style="color: #10b981;">✔ Internal-Only</span>'}</td>
                     <td>Validates boundary permissions for untrusted nodes.</td>
                   </tr>
                 </tbody>

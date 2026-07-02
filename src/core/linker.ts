@@ -192,6 +192,19 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
         errors.push(`Semantic Error: Identity '${identity.id}' has expired credentials at '${identity.expires_at}'.`);
       }
     }
+
+    if (identity.type === 'federated_role') {
+      if (!identity.provider_ref) {
+        errors.push(`Semantic Error: Identity '${identity.id}' has type 'federated_role' but is missing the 'provider_ref' field.`);
+      } else {
+        const ref = identity.provider_ref;
+        const validPrefixes = ['arn:aws:', 'snowflake://', 'gcp://', 'okta://', 'azure://'];
+        const isValid = validPrefixes.some(prefix => ref.startsWith(prefix));
+        if (!isValid) {
+          errors.push(`Semantic Error: Identity '${identity.id}' has an invalid provider_ref '${ref}'. Must start with one of: ${validPrefixes.join(', ')}.`);
+        }
+      }
+    }
   });
 
   // 6. Validate MCP exposed tools references
@@ -204,6 +217,29 @@ export function linkAndValidateSystemModel(data: SystemModel, options: LinkerVal
           errors.push(`Referential Error: MCP Server '${mcp.id}' exposes tool '${toolId}' which is not defined in 'tools'.`);
         }
       });
+    }
+  });
+
+  // 7. Validate DataClass inheritance referential integrity and cycles
+  dataClasses.forEach((dc) => {
+    if (dc.inherits_from) {
+      if (!dataClassIds.has(dc.inherits_from)) {
+        errors.push(`Referential Error: Data class '${dc.id}' inherits_from '${dc.inherits_from}' which is not defined in 'data_classes'.`);
+      } else {
+        // Trace cycle
+        const path = new Set<string>([dc.id]);
+        let current = dc.inherits_from;
+        const dcMap = new Map(dataClasses.map((d) => [d.id, d]));
+        while (current) {
+          if (path.has(current)) {
+            errors.push(`Referential Error: Data class inheritance cycle detected: ${Array.from(path).join(' -> ')} -> ${current}`);
+            break;
+          }
+          path.add(current);
+          const parent = dcMap.get(current);
+          current = parent?.inherits_from || '';
+        }
+      }
     }
   });
 

@@ -1,5 +1,6 @@
 import { DataClass, McpServer, SystemModel, Tool } from '../../core/model.js';
 import { Finding, Rule } from './types.js';
+import { isPIIClass } from './helpers.js';
 
 export const piiExternalMcpRule: Rule = {
   id: 'R-003',
@@ -33,8 +34,7 @@ export const piiExternalMcpRule: Rule = {
       (agent.allowed_tools || []).forEach((toolId) => {
         const tool = toolMap.get(toolId);
         (tool?.data_classes || []).forEach((dataClassId) => {
-          const dataClass = dataClassMap.get(dataClassId);
-          if (dataClass && (dataClass.classification === 'pii' || dataClassId.toLowerCase().includes('pii'))) {
+          if (isPIIClass(dataClassId, dataClassMap)) {
             accessesPii = true;
             offendingTool = toolId;
           }
@@ -48,8 +48,7 @@ export const piiExternalMcpRule: Rule = {
       });
 
       (agent.memory?.contains || []).forEach((dataClassId) => {
-        const dataClass = dataClassMap.get(dataClassId);
-        if (dataClass && (dataClass.classification === 'pii' || dataClassId.toLowerCase().includes('pii'))) {
+        if (isPIIClass(dataClassId, dataClassMap)) {
           accessesPii = true;
           offendingTool = 'vector-memory';
         }

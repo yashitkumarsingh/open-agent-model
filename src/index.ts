@@ -22,7 +22,8 @@ program
   .description('Initialize a new agentmodel.yaml configuration file')
   .option('-o, --output <file>', 'Output file path', 'agentmodel.yaml')
   .action((options) => {
-    initCommand(options);
+    const code = initCommand(options);
+    process.exit(code);
   });
 
 program
@@ -31,7 +32,8 @@ program
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
   .option('--as-of <date>', 'Validation date for expiry checks (YYYY-MM-DD or ISO date-time)')
   .action((options) => {
-    validateCommand(options);
+    const code = validateCommand(options);
+    process.exit(code);
   });
 
 program
@@ -40,7 +42,8 @@ program
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
   .option('-o, --output <file>', 'Output SVG file path', 'agent-map.svg')
   .action((options) => {
-    diagramCommand(options);
+    const code = diagramCommand(options);
+    process.exit(code);
   });
 
 program
@@ -51,7 +54,8 @@ program
   .option('--sarif <file>', 'Output path for SARIF security report')
   .option('--as-of <date>', 'Validation date for expiry checks (YYYY-MM-DD or ISO date-time)')
   .action((options) => {
-    riskCommand(options);
+    const code = riskCommand(options);
+    process.exit(code);
   });
 
 program
@@ -61,7 +65,8 @@ program
   .option('-d, --dir <directory>', 'Output directory for reports', '.')
   .option('--as-of <date>', 'Validation date for expiry checks (YYYY-MM-DD or ISO date-time)')
   .action((options) => {
-    reportCommand(options);
+    const code = reportCommand(options);
+    process.exit(code);
   });
 
 program
@@ -72,7 +77,8 @@ program
   .option('--tools-file <file>', 'JSON file containing exposed MCP tools definitions')
   .option('--trust-level <level>', 'Trust zone boundary (internal, partner, external, untrusted)', 'external')
   .action((options) => {
-    importMcpCommand(options);
+    const code = importMcpCommand(options);
+    process.exit(code);
   });
 
 program
@@ -81,7 +87,8 @@ program
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
   .option('-t, --traces <file>', 'Input OpenTelemetry JSON traces file', 'traces.json')
   .action(async (options) => {
-    await driftCommand(options);
+    const code = await driftCommand(options);
+    process.exit(code);
   });
 
 program.parse(process.argv);

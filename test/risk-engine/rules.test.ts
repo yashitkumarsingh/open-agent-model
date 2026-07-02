@@ -435,4 +435,76 @@ test('Risk Engine Rules Test Suite', async (t) => {
     assert.strictEqual(doubleFlag, false, 'R-015 should not flag tools already declared as high or critical risk');
   });
 
+  await t.test('8. Hierarchical DataClass inheritance risk resolution (R-003 & R-012)', () => {
+    // Model where child-dc inherits classification='pii' and sensitivity='high'
+    // from parent-dc. This should trigger R-003 (exfil via external mcp) and R-012 (model retention + risk).
+    const model: SystemModel = {
+      system: 'hierarchical-governance-test',
+      version: '1.0',
+      agents: [
+        {
+          id: 'pii-agent',
+          purpose: 'Processes child data class',
+          model: 'retained-model',
+          allowed_tools: ['sensitive-tool', 'external-tool']
+        }
+      ],
+      tools: [
+        {
+          id: 'sensitive-tool',
+          type: 'api',
+          risk: 'medium',
+          data_classes: ['child-dc']
+        },
+        {
+          id: 'external-tool',
+          type: 'api',
+          risk: 'low',
+          source: { kind: 'mcp', mcp_server: 'partner-mcp' }
+        }
+      ],
+      mcp_servers: [
+        {
+          id: 'partner-mcp',
+          trust_level: 'external',
+          exposes: ['external-tool']
+        }
+      ],
+      models: [
+        {
+          id: 'retained-model',
+          provider: 'openai',
+          data_retention: 'enabled',
+          risk: 'high'
+        }
+      ],
+      data_classes: [
+        {
+          id: 'parent-dc',
+          sensitivity: 'high',
+          classification: 'pii'
+        },
+        {
+          id: 'child-dc',
+          sensitivity: 'low', // Traces sensitivity=high from parent-dc
+          classification: 'public', // Traces classification=pii from parent-dc
+          inherits_from: 'parent-dc'
+        }
+      ]
+    };
+
+    const findings = runRiskChecks(model);
+
+    // Assert exfiltration rule (R-003) is triggered for child-dc via pii inheritance
+    const hasR003 = findings.some((f) => f.id === 'R-003-EXF' && f.agentId === 'pii-agent');
+    assert.strictEqual(hasR003, true, 'R-003 should trigger on data classes inheriting PII classification');
+
+    // Assert model retention rule (R-012) is triggered via sensitivity and PII inheritance
+    const hasR012Retention = findings.some((f) => f.id === 'R-012-MODEL-RETENTION' && f.agentId === 'pii-agent');
+    assert.strictEqual(hasR012Retention, true, 'R-012 retention should trigger on data classes inheriting PII classification');
+
+    const hasR012Risk = findings.some((f) => f.id === 'R-012-MODEL-RISK' && f.agentId === 'pii-agent');
+    assert.strictEqual(hasR012Risk, true, 'R-012 high model risk should trigger on data classes inheriting high sensitivity');
+  });
+
 });

@@ -86,6 +86,14 @@
               "type": "string"
             },
             "description": "Granted authorization scopes."
+          },
+          "provider_ref": {
+            "type": "string",
+            "description": "Federated IAM provider reference pointer (e.g. AWS ARN, Snowflake integration ref)."
+          },
+          "max_session_duration": {
+            "type": "integer",
+            "description": "Maximum session lifespan in seconds for federated tokens."
           }
         },
         "required": ["id", "type"]
@@ -367,6 +375,10 @@
           "classification": {
             "type": "string",
             "enum": ["pii", "financial", "credentials", "internal_data", "public"]
+          },
+          "inherits_from": {
+            "type": "string",
+            "description": "ID of another data class this data class inherits classification rules from."
           }
         },
         "required": ["id", "sensitivity", "classification"]

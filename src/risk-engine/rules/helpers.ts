@@ -68,3 +68,48 @@ export function collectAgentDataClasses(agent: Agent, toolMap: Map<string, Tool>
     .map((dataClassId) => dataClassMap.get(dataClassId))
     .filter((dataClass): dataClass is DataClass => dataClass !== undefined);
 }
+
+export function isPIIClass(dcId: string, dataClassMap: Map<string, DataClass>): boolean {
+  const dc = dataClassMap.get(dcId);
+  if (!dc) return dcId.toLowerCase().includes('pii');
+  
+  const path = new Set<string>([dc.id]);
+  let current: DataClass | undefined = dc;
+  while (current) {
+    if (current.classification === 'pii' || current.id.toLowerCase().includes('pii')) {
+      return true;
+    }
+    if (!current.inherits_from) break;
+    if (path.has(current.inherits_from)) break;
+    path.add(current.inherits_from);
+    current = dataClassMap.get(current.inherits_from);
+  }
+  return false;
+}
+
+const SENSITIVITY_VALUES: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+
+export function resolveMaxSensitivity(dcId: string, dataClassMap: Map<string, DataClass>): 'low' | 'medium' | 'high' | 'critical' {
+  const dc = dataClassMap.get(dcId);
+  if (!dc) return 'low';
+  
+  let maxVal = SENSITIVITY_VALUES[dc.sensitivity] || 1;
+  
+  const path = new Set<string>([dc.id]);
+  let current: DataClass | undefined = dc;
+  while (current) {
+    const val = SENSITIVITY_VALUES[current.sensitivity] || 1;
+    if (val > maxVal) {
+      maxVal = val;
+    }
+    if (!current.inherits_from) break;
+    if (path.has(current.inherits_from)) break;
+    path.add(current.inherits_from);
+    current = dataClassMap.get(current.inherits_from);
+  }
+  
+  if (maxVal === 4) return 'critical';
+  if (maxVal === 3) return 'high';
+  if (maxVal === 2) return 'medium';
+  return 'low';
+}

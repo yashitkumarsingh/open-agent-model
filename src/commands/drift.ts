@@ -13,25 +13,32 @@ interface DriftViolation {
   description: string;
 }
 
-export async function driftCommand(options: { input: string; traces: string }) {
+interface TraceSpan {
+  name?: string;
+  traceId?: string;
+  spanId?: string;
+  attributes?: Record<string, string | number | boolean | undefined>;
+}
+
+export async function driftCommand(options: { input: string; traces: string }): Promise<number> {
   const inputPath = path.resolve(options.input);
   const tracesPath = path.resolve(options.traces);
 
   if (!fs.existsSync(inputPath)) {
     console.error(`\x1b[31mError: Agent model file not found at ${inputPath}\x1b[0m`);
-    process.exit(1);
+    return 1;
   }
 
   if (!fs.existsSync(tracesPath)) {
     console.error(`\x1b[31mError: OpenTelemetry traces log file not found at ${tracesPath}\x1b[0m`);
-    process.exit(1);
+    return 1;
   }
 
   // 1. Load and validate design model config
   const validation = validateYaml(inputPath);
   if (!validation.valid || !validation.data) {
     console.error(`\x1b[31mError: Invalid agent model configuration. Run 'oam validate' to debug.\x1b[0m`);
-    process.exit(1);
+    return 1;
   }
   const data: SystemModel = validation.data;
 
@@ -42,7 +49,7 @@ export async function driftCommand(options: { input: string; traces: string }) {
   });
 
   // 2. Parse traces. We support both JSON arrays and JSON Lines (JSONL) dynamically.
-  let traceSpans: any[] = [];
+  let traceSpans: TraceSpan[] = [];
   let isJsonL = false;
 
   try {
@@ -50,30 +57,30 @@ export async function driftCommand(options: { input: string; traces: string }) {
     if (!rawHead.startsWith('[')) {
       isJsonL = true;
     } else {
-      traceSpans = JSON.parse(rawHead);
+      traceSpans = JSON.parse(rawHead) as TraceSpan[];
     }
-  } catch (error: any) {
-    console.error(`\x1b[31mError checking trace file format: ${error?.message || error}\x1b[0m`);
-    process.exit(1);
+  } catch (error: unknown) {
+    console.error(`\x1b[31mError checking trace file format: ${error instanceof Error ? error.message : String(error)}\x1b[0m`);
+    return 1;
   }
 
   const violations: DriftViolation[] = [];
   let totalSpans = 0;
 
-  const processSpan = (span: any) => {
+  const processSpan = (span: TraceSpan) => {
     if (!span || typeof span !== 'object') return;
     totalSpans++;
     const { name, attributes, traceId, spanId } = span;
     if (!attributes) return;
 
-    const agentId = attributes['gen_ai.agent.id'];
+    const agentId = attributes['gen_ai.agent.id'] as string | undefined;
     if (!agentId) return;
 
     const agent = agentMap.get(agentId);
 
     // Verify tool executions
     if (name === 'agent.tool_call') {
-      const toolId = attributes['gen_ai.tool.id'];
+      const toolId = attributes['gen_ai.tool.id'] as string | undefined;
       if (toolId) {
         if (!agent) {
           violations.push({
@@ -102,7 +109,7 @@ export async function driftCommand(options: { input: string; traces: string }) {
 
     // Verify delegations
     if (name === 'agent.delegate') {
-      const delegateId = attributes['gen_ai.delegate.id'];
+      const delegateId = attributes['gen_ai.delegate.id'] as string | undefined;
       if (delegateId) {
         if (!agent) {
           violations.push({
@@ -139,12 +146,12 @@ export async function driftCommand(options: { input: string; traces: string }) {
 
       for await (const line of rl) {
         if (!line.trim()) continue;
-        const span = JSON.parse(line);
+        const span = JSON.parse(line) as TraceSpan;
         processSpan(span);
       }
-    } catch (error: any) {
-      console.error(`\x1b[31mError streaming JSONL trace logs: ${error?.message || error}\x1b[0m`);
-      process.exit(1);
+    } catch (error: unknown) {
+      console.error(`\x1b[31mError streaming JSONL trace logs: ${error instanceof Error ? error.message : String(error)}\x1b[0m`);
+      return 1;
     }
   } else {
     traceSpans.forEach((span) => processSpan(span));
@@ -162,9 +169,9 @@ export async function driftCommand(options: { input: string; traces: string }) {
       console.error(`  - Target: ${v.targetId}`);
       console.error(`  - Error:  ${v.description}\n`);
     });
-    process.exit(1);
+    return 1;
   } else {
     console.log(`\n\x1b[32m✔ DRIFT GATE PASSED: All runtime traces conform to design specification.\x1b[0m\n`);
-    process.exit(0);
+    return 0;
   }
 }

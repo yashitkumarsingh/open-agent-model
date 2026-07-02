@@ -63,7 +63,9 @@ contains_element(arr, elem) {
 `;
 }
 
-export function generatePolicyRecommendationsMd(data: any): string {
+import { SystemModel } from '../core/model.js';
+
+export function generatePolicyRecommendationsMd(data: SystemModel): string {
   const rego = generateRegoPolicy();
   
   return `# OpenAgentModel Policy Recommendations

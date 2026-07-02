@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { validateYaml } from './validate.js';
 import { runRiskChecks } from '../risk-engine/rules/index.js';
-import { SystemModel } from '../core/model.js';
+import { SystemModel, Agent, Tool, McpServer, DataClass } from '../core/model.js';
 
 interface GraphNode {
   id: string;
@@ -10,7 +10,7 @@ interface GraphNode {
   type: 'agent' | 'tool' | 'mcp' | 'dataclass';
   x: number;
   y: number;
-  details: any;
+  details: unknown;
 }
 
 export function generateSvgDiagram(data: SystemModel): string {
@@ -23,8 +23,8 @@ export function generateSvgDiagram(data: SystemModel): string {
   const mcpServers = data.mcp_servers || [];
   const dataClasses = data.data_classes || [];
 
-  const dataClassMap = new Map<string, any>();
-  dataClasses.forEach((d: any) => dataClassMap.set(d.id, d));
+  const dataClassMap = new Map<string, DataClass>();
+  dataClasses.forEach((d: DataClass) => dataClassMap.set(d.id, d));
 
   // Run risk checks to highlight specific risk paths
   const findings = runRiskChecks(data);
@@ -61,7 +61,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   };
 
   // Column 1: MCP Servers (X = 100)
-  mcpServers.forEach((mcp: any, idx: number) => {
+  mcpServers.forEach((mcp: McpServer, idx: number) => {
     const node: GraphNode = {
       id: mcp.id,
       label: mcp.id,
@@ -75,7 +75,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   });
 
   // Column 2: Agents (X = 450)
-  agents.forEach((agent: any, idx: number) => {
+  agents.forEach((agent: Agent, idx: number) => {
     const node: GraphNode = {
       id: agent.id,
       label: agent.id,
@@ -89,7 +89,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   });
 
   // Column 3: Tools (X = 780)
-  tools.forEach((tool: any, idx: number) => {
+  tools.forEach((tool: Tool, idx: number) => {
     const node: GraphNode = {
       id: tool.id,
       label: tool.id,
@@ -103,7 +103,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   });
 
   // Column 4: Data Classes (X = 980)
-  dataClasses.forEach((dc: any, idx: number) => {
+  dataClasses.forEach((dc: DataClass, idx: number) => {
     const node: GraphNode = {
       id: dc.id,
       label: dc.id,
@@ -163,7 +163,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   `;
 
   // Draw MCP to Tool exposing lines
-  mcpServers.forEach((mcp: any) => {
+  mcpServers.forEach((mcp: McpServer) => {
     const mcpNode = nodeMap.get(mcp.id);
     if (mcpNode && mcp.exposes) {
       mcp.exposes.forEach((toolId: string) => {
@@ -184,7 +184,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   });
 
   // Draw Agent to Tool allowed tools lines
-  agents.forEach((agent: any) => {
+  agents.forEach((agent: Agent) => {
     const agentNode = nodeMap.get(agent.id);
     if (agentNode && agent.allowed_tools) {
       agent.allowed_tools.forEach((toolId: string) => {
@@ -215,7 +215,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   });
 
   // Draw Tool to Data Class lines
-  tools.forEach((tool: any) => {
+  tools.forEach((tool: Tool) => {
     const toolNode = nodeMap.get(tool.id);
     if (toolNode && tool.data_classes) {
       tool.data_classes.forEach((dcId: string) => {
@@ -235,7 +235,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   });
 
   // Draw Agent to Agent (A2A) delegation lines
-  agents.forEach((agent: any) => {
+  agents.forEach((agent: Agent) => {
     const agentNode = nodeMap.get(agent.id);
     if (agentNode && agent.allowed_delegates) {
       agent.allowed_delegates.forEach((delegateId: string) => {
@@ -281,8 +281,9 @@ export function generateSvgDiagram(data: SystemModel): string {
   // Draw nodes
   nodes.forEach((node) => {
     if (node.type === 'agent') {
+      const details = node.details as Agent;
       const isPiiOffender = piiExfilAgents.has(node.id);
-      const isApprovalReq = node.details.autonomy === 'human-approval-required';
+      const isApprovalReq = details.autonomy === 'human-approval-required';
       
       let border = '#8b5cf6';
       let fill = '#1e1b4b';
@@ -299,8 +300,8 @@ export function generateSvgDiagram(data: SystemModel): string {
     <g transform="translate(${node.x - 75}, ${node.y - 30})">
       <rect width="150" height="60" rx="10" fill="${fill}" stroke="${border}" stroke-width="2" filter="${filter}" />
       <text x="75" y="24" fill="#f3e8ff" font-size="12" font-weight="800" text-anchor="middle">${node.label}</text>
-      <text x="75" y="38" fill="#a78bfa" font-size="9" text-anchor="middle">${node.details.framework || 'unknown'}</text>
-      <text x="75" y="49" fill="#93c5fd" font-size="8" font-weight="600" letter-spacing="0.5" text-anchor="middle">${(node.details.autonomy || 'supervised').toUpperCase()}</text>
+      <text x="75" y="38" fill="#a78bfa" font-size="9" text-anchor="middle">${details.framework || 'unknown'}</text>
+      <text x="75" y="49" fill="#93c5fd" font-size="8" font-weight="600" letter-spacing="0.5" text-anchor="middle">${(details.autonomy || 'supervised').toUpperCase()}</text>
       ${isApprovalReq ? `
       <!-- Approval Shield -->
       <g transform="translate(132, -8)">
@@ -311,7 +312,8 @@ export function generateSvgDiagram(data: SystemModel): string {
     }
 
     if (node.type === 'tool') {
-      const risk = node.details.risk || 'low';
+      const details = node.details as Tool;
+      const risk = details.risk || 'low';
       let stroke = '#14b8a6';
       let fill = '#0d2e27';
       let riskLabel = risk.toUpperCase();
@@ -329,14 +331,15 @@ export function generateSvgDiagram(data: SystemModel): string {
     <g transform="translate(${node.x - 65}, ${node.y - 25})">
       <rect width="130" height="50" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />
       <text x="65" y="22" fill="#ccfbf1" font-size="11" font-weight="700" text-anchor="middle">${node.label}</text>
-      <text x="65" y="35" fill="#2dd4bf" font-size="8" text-anchor="middle">${node.details.type || 'api'}</text>
+      <text x="65" y="35" fill="#2dd4bf" font-size="8" text-anchor="middle">${details.type || 'api'}</text>
       <rect x="65" y="-6" width="45" height="12" rx="4" transform="translate(-22.5, 43)" fill="${stroke}" />
       <text x="65" y="48" fill="#ffffff" font-size="7" font-weight="800" text-anchor="middle">${riskLabel}</text>
     </g>`;
     }
 
     if (node.type === 'mcp') {
-      const level = node.details.trust_level || 'internal';
+      const details = node.details as McpServer;
+      const level = details.trust_level || 'internal';
       let stroke = '#10b981';
       let fill = '#064e3b';
       if (level === 'external' || level === 'untrusted') {
@@ -355,7 +358,7 @@ export function generateSvgDiagram(data: SystemModel): string {
     }
 
     if (node.type === 'dataclass') {
-      const dc = node.details;
+      const dc = node.details as DataClass;
       let stroke = '#10b981';
       let fill = '#064e3b';
       
@@ -412,7 +415,7 @@ export function generateSvgDiagram(data: SystemModel): string {
   return svgContent;
 }
 
-export function diagramCommand(options: { input: string; output: string }) {
+export function diagramCommand(options: { input: string; output: string }): number {
   const inputPath = path.resolve(options.input);
   const outputPath = path.resolve(options.output);
 
@@ -421,12 +424,12 @@ export function diagramCommand(options: { input: string; output: string }) {
   if (!validation.valid) {
     console.error(`\x1b[31mError validating agent model before rendering diagram:\x1b[0m`);
     validation.errors?.forEach((err) => console.error(`  - ${err}`));
-    process.exit(1);
+    return 1;
   }
 
   if (!validation.data) {
     console.error(`\x1b[31mError: Loaded config data is empty.\x1b[0m`);
-    process.exit(1);
+    return 1;
   }
 
   const svg = generateSvgDiagram(validation.data);
@@ -434,8 +437,9 @@ export function diagramCommand(options: { input: string; output: string }) {
   try {
     fs.writeFileSync(outputPath, svg, 'utf8');
     console.log(`\x1b[32m✔ Successfully rendered Agent architecture diagram at ${outputPath}\x1b[0m`);
-  } catch (error: any) {
-    console.error(`Error saving SVG file: ${error?.message || error}`);
-    process.exit(1);
+    return 0;
+  } catch (error: unknown) {
+    console.error(`Error saving SVG file: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
   }
 }

@@ -46,6 +46,6 @@ npm run precommit
 - `test/core/locator.test.ts`: source-location helper behavior used by SARIF/reporting output.
 - `test/report/sarif-builder.test.ts`: SARIF rule IDs, severities, locations, and parse handling.
 - `test/risk-engine/policy-evaluator.test.ts`: experimental declarative policy evaluator behavior.
-- `test/risk-engine/rules.test.ts`: built-in static governance rules R-001 through R-014.
+- `test/risk-engine/rules.test.ts`: built-in static governance rules R-001 through R-015.
 
 Tests create temporary YAML or generated artifact files as needed and clean them up in `finally` blocks.

@@ -15,7 +15,7 @@ All notable changes to OpenAgentModel will be documented here.
   - Restructured all CLI commands to return exit codes instead of calling `process.exit()`, allowing programmatic harness execution in unit and e2e testing.
   - Pre-validated importer CLI flags (validating `--trust-level` and rejecting empty `--mcp-id` inputs).
   - Escaped regular expressions in SARIF code quality locator to prevent location path collisions.
-- **Built-in Quality Gates**: Integrated Node.js native line (80%), branch (70%), and function (80%) test coverage checks inside the pre-commit workflow.
+- **Built-in Quality Gates**: Integrated Node.js native line (80%), branch (80%), and function (80%) test coverage checks inside the pre-commit workflow.
 
 ## 0.2.1
 

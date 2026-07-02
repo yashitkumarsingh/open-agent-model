@@ -17,7 +17,7 @@
     "test": "npm run build && npm run test:compiled",
     "test:compiled": "node --import tsx --test test/**/*.test.ts",
     "coverage": "npm run build && npm run coverage:compiled",
-    "coverage:compiled": "node --import tsx --test --experimental-test-coverage --test-coverage-include=src/**/*.ts --test-coverage-lines=80 --test-coverage-branches=70 --test-coverage-functions=80 test/**/*.test.ts",
+    "coverage:compiled": "node --import tsx --test --experimental-test-coverage --test-coverage-include=src/**/*.ts --test-coverage-lines=80 --test-coverage-branches=80 --test-coverage-functions=80 test/**/*.test.ts",
     "precommit": "node scripts/precommit.js",
     "prepare": "husky"
   },

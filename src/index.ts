@@ -10,6 +10,7 @@ import { importMcpCommand } from './commands/import-mcp.js';
 import { discoverMcpCommand } from './commands/discover-mcp.js';
 import { mcpDiffCommand } from './commands/mcp-diff.js';
 import { bomDiffCommand } from './commands/diff.js';
+import { observeCommand } from './commands/observe.js';
 import { driftCommand } from './commands/drift.js';
 import { getPackageVersion } from './core/version.js';
 
@@ -124,10 +125,23 @@ program
   });
 
 program
+  .command('observe')
+  .description('Ingest and normalize raw trace files into standard Runtime Evidence JSON snapshots')
+  .requiredOption('-t, --traces <file>', 'Input OpenTelemetry JSON/JSONL traces file')
+  .requiredOption('-o, --out <file>', 'Output path to save the normalized evidence JSON file')
+  .option('--system <name>', 'Name of the agentic system being observed', 'ObservedAgenticSystem')
+  .action(async (options) => {
+    const code = await observeCommand(options);
+    process.exit(code);
+  });
+
+program
   .command('drift')
-  .description('Compare runtime OpenTelemetry traces against design-time specification to detect drift')
+  .description('Compare runtime OpenTelemetry traces or evidence against design-time specification to detect drift')
   .option('-i, --input <file>', 'Input agent model YAML file', 'agentmodel.yaml')
-  .option('-t, --traces <file>', 'Input OpenTelemetry JSON traces file', 'traces.json')
+  .option('-e, --evidence <file>', 'Input Runtime Evidence JSON file')
+  .option('-t, --traces <file>', 'Input OpenTelemetry JSON/JSONL traces file (legacy/direct fallback)')
+  .option('--fail-on <level>', 'Gating threat level threshold (medium, high, critical)', 'high')
   .action(async (options) => {
     const code = await driftCommand(options);
     process.exit(code);

@@ -46,6 +46,8 @@ npm run precommit
 - `test/commands/discover-mcp.test.ts`: compiled test suite for live stdio JSON-RPC MCP discovery, error context tracking, snapshots, and model merging.
 - `test/commands/mcp-diff.test.ts`: compiled test suite for MCP tools diff, `--fail-on` gates, and ANSI text sanitisation.
 - `test/commands/diff.test.ts`: compiled test suite for Agent-BOM diffing and security finding delta comparisons.
+- `test/commands/observe.test.ts`: compiled test suite for log ingestion, OTel trace mapping, and evidence schema validation.
+- `test/commands/drift-evidence.test.ts`: compiled test suite for severity-based drift analysis and pipeline gating logic.
 - `test/core/linker.test.ts`: JSON Schema validation plus semantic linker checks for references, duplicate IDs, identities, scopes, and deterministic expiry dates.
 - `test/core/locator.test.ts`: source-location helper behavior used by SARIF/reporting output.
 - `test/report/sarif-builder.test.ts`: SARIF rule IDs, severities, locations, and parse handling.

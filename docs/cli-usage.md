@@ -136,22 +136,35 @@ Compares two Agent-BOM JSON files to report changes (added, removed, and modifie
 oam diff --base baseline-bom.json --head head-bom.json
 ```
 
-### 10. Detect Runtime Drift (`oam drift`)
-Audits active runtime execution logs (OpenTelemetry trace spans) against design specifications to flag unauthorized tool execution or delegation pathways:
+### 10. Ingest Runtime Evidence (`oam observe`)
+Ingests and normalizes raw OpenTelemetry JSON/JSONL trace files into a standard, schema-conforming Runtime Evidence JSON snapshot:
 ```bash
-oam drift -i agentmodel.yaml -t traces.json
+oam observe --traces traces.json --out runtime-evidence.json --system payment-system
+```
+
+### 11. Detect Runtime Drift (`oam drift`)
+Audits active runtime execution logs (OpenTelemetry traces) or pre-processed Runtime Evidence snapshots against design specifications to flag unauthorized tool execution, unapproved delegation pathways, missing human approvals for critical tools, model usage mismatches, expired identities, or unauthorized data-class access:
+```bash
+# Validate conforming runtime evidence with severity gating
+oam drift -i agentmodel.yaml -e runtime-evidence.json --fail-on critical
+
+# Directly check traces using legacy/direct fallback mode
+oam drift -i agentmodel.yaml -t traces.json --fail-on high
 ```
 
 #### Flags:
 - `-i, --input <file>`: Input specification YAML file (default: `agentmodel.yaml`).
-- `-t, --traces <file>`: Input OpenTelemetry trace logs file. Supports standard JSON arrays or streaming JSON Lines (JSONL).
+- `-e, --evidence <file>`: Input Runtime Evidence JSON file matching `runtime-evidence.schema.json`.
+- `-t, --traces <file>`: Input OpenTelemetry trace logs JSON/JSONL file (direct/legacy fallback).
+- `--fail-on <level>`: Gating threshold (`medium`, `high`, `critical`). CI will fail if violations equal or exceed this severity level.
 
-#### Verification Scope:
-- **`agent.tool_call`**: Checks if the tool called is authorized in the agent's `allowed_tools` list.
-- **`agent.delegate`**: Checks if task delegation between Agent A and Agent B matches the declared `allowed_delegates` pathway.
+#### Verification Severity Levels:
+- **`MEDIUM`**: Model mismatches, expired identity usage.
+- **`HIGH`**: Undeclared agent invocation, unauthorized tool executions, unapproved delegation pathways, unapproved MCP server tool routing, or unauthorized data-class writes.
+- **`CRITICAL`**: Invocation of payment/critical tools without human-in-the-loop approval evidence in the same trace context.
 
 > [!NOTE]
-> Drift analysis currently supports these OpenAgentModel span names and `gen_ai.*` attributes as a compatibility format. OTel GenAI/MCP semantic-convention adapters are roadmap work, not a current guarantee.
+> Direct trace ingestion supports the standard OpenTelemetry span conventions (`agent.tool_call`, `agent.delegate`, `agent.model_call`, `agent.approval`, `agent.identity_use`, `agent.data_access`). Standard OTel GenAI semantic-convention mapping is roadmap work.
 
 ---
 

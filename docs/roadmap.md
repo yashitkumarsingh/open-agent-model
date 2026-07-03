@@ -40,7 +40,7 @@ This decouples risk evaluation logic entirely from the compiler engine, allowing
 - **SARIF source-location mapping** backed by YAML CST/source metadata rather than raw text scanning.
 
 ### 6. Importers and Runtime Adapters
-- **MCP tool metadata import** from live server manifests.
+- **MCP tool metadata import and live stdio server discovery** [COMPLETED in v0.4.0]
+- **Baseline risk diffing for pull requests (oam diff)** [COMPLETED in v0.4.0]
 - **LangGraph and CrewAI importers** that emit `agentmodel.yaml`.
 - **OpenTelemetry GenAI/MCP adapters** that map standard semantic-convention attributes into the current drift analyzer.
-- **Baseline risk diffing** for pull requests so CI can explain exactly which agent/tool path changed.

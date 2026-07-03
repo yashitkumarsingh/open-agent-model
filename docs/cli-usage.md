@@ -125,7 +125,18 @@ Compares two MCP discovery snapshots and reports added, removed, and modified to
 oam mcp-diff --before mcp-tools.before.json --after mcp-tools.after.json
 ```
 
-### 9. Detect Runtime Drift (`oam drift`)
+Use `--fail-on <added,removed,schema-change,destructive-change>` to return exit code 1 if matching changes are found in the delta:
+```bash
+oam mcp-diff --before old.json --after new.json --fail-on destructive-change
+```
+
+### 9. Diff Agent-BOMs (`oam diff`)
+Compares two Agent-BOM JSON files to report changes (added, removed, and modified tools or agents, changed risks, and new/resolved security findings) between a baseline and target branch:
+```bash
+oam diff --base baseline-bom.json --head head-bom.json
+```
+
+### 10. Detect Runtime Drift (`oam drift`)
 Audits active runtime execution logs (OpenTelemetry trace spans) against design specifications to flag unauthorized tool execution or delegation pathways:
 ```bash
 oam drift -i agentmodel.yaml -t traces.json

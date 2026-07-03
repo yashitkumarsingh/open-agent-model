@@ -102,6 +102,9 @@ export function reportCommand(options: { input: string; dir: string; asOf?: stri
       approval: t.approval,
       rate_limit: t.rate_limit,
       data_classes: t.data_classes,
+      source: t.source,
+      input_schema: t.input_schema,
+      annotations: t.annotations,
     })),
     mcp_servers: (data.mcp_servers || []).map((m) => ({
       id: m.id,

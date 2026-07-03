@@ -9,6 +9,7 @@ import { reportCommand } from './commands/report.js';
 import { importMcpCommand } from './commands/import-mcp.js';
 import { discoverMcpCommand } from './commands/discover-mcp.js';
 import { mcpDiffCommand } from './commands/mcp-diff.js';
+import { bomDiffCommand } from './commands/diff.js';
 import { driftCommand } from './commands/drift.js';
 import { getPackageVersion } from './core/version.js';
 
@@ -106,8 +107,19 @@ program
   .description('Compare two MCP snapshots and report the delta')
   .requiredOption('--before <file>', 'Before snapshot JSON file')
   .requiredOption('--after <file>', 'After snapshot JSON file')
+  .option('--fail-on <types>', 'Fail comparison and exit with non-zero code on specified changes (added, removed, schema-change, destructive-change)')
   .action((options) => {
     const code = mcpDiffCommand(options);
+    process.exit(code);
+  });
+
+program
+  .command('diff')
+  .description('Compare two Agent-BOM JSON files and report the difference')
+  .requiredOption('--base <file>', 'Baseline Agent-BOM JSON file')
+  .requiredOption('--head <file>', 'Target Agent-BOM JSON file')
+  .action((options) => {
+    const code = bomDiffCommand(options);
     process.exit(code);
   });
 

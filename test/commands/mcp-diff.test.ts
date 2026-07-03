@@ -141,4 +141,38 @@ test('MCP Diff Command Test Suite', async (t) => {
       cleanup(before, after);
     }
   });
+
+  await t.test('6. Diff fail-on returns exit code 1 when specified changes are found', () => {
+    const before = writeTempSnapshot('before6', [
+      { name: 'tool-a', description: 'desc a', annotations: { destructiveHint: false } }
+    ]);
+    const after = writeTempSnapshot('after6', [
+      { name: 'tool-a', description: 'desc a', annotations: { destructiveHint: true } },
+      { name: 'tool-b', description: 'desc b' }
+    ]);
+
+    try {
+      assert.throws(() => {
+        execSync(
+          `node dist/index.js mcp-diff --before ${before} --after ${after} --fail-on added`,
+          { stdio: 'pipe', cwd: ROOT }
+        );
+      }, /Command failed/, 'should exit with code 1 when new tool is added');
+
+      assert.throws(() => {
+        execSync(
+          `node dist/index.js mcp-diff --before ${before} --after ${after} --fail-on destructive-change`,
+          { stdio: 'pipe', cwd: ROOT }
+        );
+      }, /Command failed/, 'should exit with code 1 when annotations change to destructive');
+
+      const output = cleanAnsi(execSync(
+        `node dist/index.js mcp-diff --before ${before} --after ${after} --fail-on removed`,
+        { encoding: 'utf8', cwd: ROOT }
+      ));
+      assert.match(output, /Added tools:\s+1/, 'should pass comparison successfully if fail-on trigger is not met');
+    } finally {
+      cleanup(before, after);
+    }
+  });
 });

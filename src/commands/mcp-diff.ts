@@ -16,16 +16,18 @@ function fail(msg: string): never {
   throw new Error(msg);
 }
 
-function deepEqual(a: any, b: any): boolean {
+function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const objA = a as Record<string, unknown>;
+    const objB = b as Record<string, unknown>;
     if (Array.isArray(a) !== Array.isArray(b)) return false;
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
+    const keysA = Object.keys(objA);
+    const keysB = Object.keys(objB);
     if (keysA.length !== keysB.length) return false;
     for (const key of keysA) {
       if (!keysB.includes(key)) return false;
-      if (!deepEqual(a[key], b[key])) return false;
+      if (!deepEqual(objA[key], objB[key])) return false;
     }
     return true;
   }
@@ -63,7 +65,7 @@ function loadToolsFromSnapshot(filePath: string): McpTool[] {
   fail(`File '${filePath}' does not contain a valid MCP tools array or snapshot.`);
 }
 
-export function mcpDiffCommand(options: { before: string; after: string }): number {
+export function mcpDiffCommand(options: { before: string; after: string; failOn?: string }): number {
   try {
     const beforeTools = loadToolsFromSnapshot(options.before);
     const afterTools = loadToolsFromSnapshot(options.after);
@@ -169,6 +171,41 @@ export function mcpDiffCommand(options: { before: string; after: string }): numb
 
     if (added.length === 0 && removed.length === 0 && modified.length === 0) {
       console.log(`\x1b[32m✔ No changes detected between MCP tool snapshots.\x1b[0m\n`);
+    }
+
+    // failOn logic
+    let shouldFail = false;
+    if (options.failOn) {
+      const failFlags = options.failOn.split(',').map((f) => f.trim().toLowerCase());
+      for (const flag of failFlags) {
+        if (flag === 'added' && added.length > 0) {
+          shouldFail = true;
+        }
+        if (flag === 'removed' && removed.length > 0) {
+          shouldFail = true;
+        }
+        if (flag === 'schema-change' && modified.some(m => m.schemaChange)) {
+          shouldFail = true;
+        }
+        if (flag === 'destructive-change') {
+          const hasDestructiveModified = modified.some(m => {
+            const afterAnn = m.annotationChange?.after;
+            return afterAnn && (afterAnn.destructive_hint === true || afterAnn.destructiveHint === true);
+          });
+          const hasDestructiveAdded = added.some(name => {
+            const tool = afterMap.get(name);
+            return tool?.annotations && (tool.annotations.destructiveHint === true || (tool.annotations as any).destructive_hint === true);
+          });
+          if (hasDestructiveModified || hasDestructiveAdded) {
+            shouldFail = true;
+          }
+        }
+      }
+    }
+
+    if (shouldFail) {
+      console.error(`\x1b[31m✖ MCP snapshot comparison failed quality gates specified by --fail-on.\x1b[0m\n`);
+      return 1;
     }
 
     return 0;

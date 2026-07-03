@@ -42,6 +42,10 @@ npm run precommit
 ## Coverage Map
 
 - `test/commands/cli.test.ts`: compiled CLI smoke tests for validate, risk, drift, and diagram commands.
+- `test/commands/import-mcp.test.ts`: compiled test suite for MCP tool imports, `--normalize-ids`, duplication collision, metadata refresh, and post-mutation failures.
+- `test/commands/discover-mcp.test.ts`: compiled test suite for live stdio JSON-RPC MCP discovery, error context tracking, snapshots, and model merging.
+- `test/commands/mcp-diff.test.ts`: compiled test suite for MCP tools diff, `--fail-on` gates, and ANSI text sanitisation.
+- `test/commands/diff.test.ts`: compiled test suite for Agent-BOM diffing and security finding delta comparisons.
 - `test/core/linker.test.ts`: JSON Schema validation plus semantic linker checks for references, duplicate IDs, identities, scopes, and deterministic expiry dates.
 - `test/core/locator.test.ts`: source-location helper behavior used by SARIF/reporting output.
 - `test/report/sarif-builder.test.ts`: SARIF rule IDs, severities, locations, and parse handling.

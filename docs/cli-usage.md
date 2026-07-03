@@ -85,9 +85,9 @@ Imports MCP tool definitions from a saved `tools/list` JSON response and links t
 oam import-mcp -i agentmodel.yaml --mcp-id vendor-mcp --tools-file mcp-tools.json --trust-level external
 ```
 
-Live MCP discovery is not implemented yet. `--tools-file` is required so the command does not silently import mock tools.
-
 The importer validates the tools file before mutating `agentmodel.yaml`, writes to a temp file, re-validates the transformed model, and only overwrites the original on a clean pass. This means a malformed tools file cannot corrupt the model.
+
+Use `--normalize-ids` when MCP tool names contain characters outside the OpenAgentModel ID pattern. The original MCP tool name is still preserved in `source.original_name`.
 
 Imported tools automatically receive `source`, `input_schema`, and `annotations` from the MCP `tools/list` response:
 ```json
@@ -108,7 +108,24 @@ Imported tools automatically receive `source`, `input_schema`, and `annotations`
 ]
 ```
 
-### 7. Detect Runtime Drift (`oam drift`)
+Re-running the same import refreshes the stored MCP description, `input_schema`, and annotations for existing tools from that MCP server.
+
+### 7. Discover MCP Tools (`oam discover-mcp`)
+Queries an MCP stdio server, writes a snapshot, or merges discovered tools directly into an OpenAgentModel file:
+```bash
+oam discover-mcp --mcp-id vendor-mcp --server node --arg ./server.js --snapshot mcp-tools.snapshot.json
+oam discover-mcp --mcp-id vendor-mcp --server node --arg ./server.js --out agentmodel.yaml --normalize-ids
+```
+
+Use `--arg <arg...>` for server arguments. `--args "<quoted string>"` is retained for legacy launch strings and option-like server flags.
+
+### 8. Diff MCP Snapshots (`oam mcp-diff`)
+Compares two MCP discovery snapshots and reports added, removed, and modified tools:
+```bash
+oam mcp-diff --before mcp-tools.before.json --after mcp-tools.after.json
+```
+
+### 9. Detect Runtime Drift (`oam drift`)
 Audits active runtime execution logs (OpenTelemetry trace spans) against design specifications to flag unauthorized tool execution or delegation pathways:
 ```bash
 oam drift -i agentmodel.yaml -t traces.json

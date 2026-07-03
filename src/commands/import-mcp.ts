@@ -4,6 +4,21 @@ import yaml from 'js-yaml';
 import { validateYaml } from './validate.js';
 import type { Tool } from '../core/model.js';
 
+export function normalizeToolId(mcpId: string, originalName: string): string {
+  const cleanName = originalName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._:-]/g, '-');
+
+  // Merge multiple hyphens and trim
+  const dedupedName = cleanName.replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!dedupedName) {
+    fail(`MCP tool name '${originalName}' cannot be normalized into a valid OpenAgentModel ID.`);
+  }
+
+  return `${mcpId}.${dedupedName}`;
+}
+
 function fail(msg: string): never {
   throw new Error(msg);
 }
@@ -15,6 +30,7 @@ export function importMcpCommand(options: {
   mcpId: string; 
   toolsFile?: string; 
   trustLevel?: string; 
+  normalizeIds?: boolean;
 }): number {
   try {
     const inputPath = path.resolve(options.input);
@@ -103,46 +119,86 @@ export function importMcpCommand(options: {
 
   data.tools = data.tools || [];
   const existingTools = new Set(data.tools.map((t) => t.id));
+  const importedToolIds = new Set<string>();
 
   for (const importedTool of toolsToImport as Record<string, unknown>[]) {
-    const toolId = (importedTool.name as string).trim();
+    const originalName = (importedTool.name as string).trim();
+    let toolId = originalName;
+
+    if (options.normalizeIds) {
+      toolId = normalizeToolId(mcpId, originalName);
+      const baseId = toolId;
+      let counter = 1;
+
+      while (existingTools.has(toolId) || importedToolIds.has(toolId)) {
+        // If same MCP server and same original name, it's the exact same tool re-import
+        const existingToolObj = data.tools.find(t => t.id === toolId);
+        if (existingToolObj && (existingToolObj as any).source?.kind === 'mcp' && (existingToolObj as any).source?.mcp_server === mcpId && (existingToolObj as any).source?.original_name === originalName) {
+          break;
+        }
+        toolId = `${baseId}-${counter}`;
+        counter++;
+      }
+    }
+
+    importedToolIds.add(toolId);
 
     // Link the tool to the MCP server
     if (mcp && mcp.exposes && !mcp.exposes.includes(toolId)) {
       mcp.exposes.push(toolId);
     }
 
-    // Add to system tools catalog with full MCP metadata preserved
-    if (!existingTools.has(toolId)) {
-      const newTool: Record<string, unknown> = {
-        id: toolId,
-        type: 'api',
-        description: importedTool.description ?? 'MCP exposed tool',
-        risk: 'medium',
-        requires_human_approval: false,
-        source: {
-          kind: 'mcp',
-          mcp_server: mcpId,
-          original_name: toolId
-        }
+    const existingToolObj = data.tools.find((t) => t.id === toolId) as unknown as Record<string, unknown> | undefined;
+    const isSameImportedTool = existingToolObj
+      && (existingToolObj.source as Record<string, unknown> | undefined)?.kind === 'mcp'
+      && (existingToolObj.source as Record<string, unknown> | undefined)?.mcp_server === mcpId
+      && (existingToolObj.source as Record<string, unknown> | undefined)?.original_name === originalName;
+
+    if (existingToolObj && !isSameImportedTool) {
+      fail(`MCP tool '${originalName}' maps to existing non-matching tool ID '${toolId}'. Use --normalize-ids or rename the existing tool.`);
+    }
+
+    const targetTool: Record<string, unknown> = existingToolObj || {
+      id: toolId,
+      type: 'api',
+      risk: 'medium',
+      requires_human_approval: false
+    };
+
+    targetTool.description = importedTool.description ?? 'MCP exposed tool';
+    targetTool.source = {
+      kind: 'mcp',
+      mcp_server: mcpId,
+      original_name: originalName
+    };
+
+    // Preserve input_schema if present in the MCP tools/list response; remove stale schemas on re-import.
+    if (importedTool.inputSchema && typeof importedTool.inputSchema === 'object') {
+      targetTool.input_schema = importedTool.inputSchema;
+    } else {
+      delete targetTool.input_schema;
+    }
+
+    // Preserve annotations if present; remove stale annotations on re-import when the server no longer exposes them.
+    if (importedTool.annotations && typeof importedTool.annotations === 'object') {
+      const ann = importedTool.annotations as Record<string, unknown>;
+      const annotations = {
+        ...(typeof ann.destructiveHint === 'boolean' && { destructive_hint: ann.destructiveHint }),
+        ...(typeof ann.readOnlyHint === 'boolean' && { read_only_hint: ann.readOnlyHint }),
+        ...(typeof ann.idempotentHint === 'boolean' && { idempotent_hint: ann.idempotentHint })
       };
-
-      // Preserve input_schema if present in the MCP tools/list response
-      if (importedTool.inputSchema && typeof importedTool.inputSchema === 'object') {
-        newTool.input_schema = importedTool.inputSchema;
+      if (Object.keys(annotations).length > 0) {
+        targetTool.annotations = annotations;
+      } else {
+        delete targetTool.annotations;
       }
+    } else {
+      delete targetTool.annotations;
+    }
 
-      // Preserve annotations if present
-      if (importedTool.annotations && typeof importedTool.annotations === 'object') {
-        const ann = importedTool.annotations as Record<string, unknown>;
-        newTool.annotations = {
-          ...(typeof ann.destructiveHint === 'boolean' && { destructive_hint: ann.destructiveHint }),
-          ...(typeof ann.readOnlyHint === 'boolean' && { read_only_hint: ann.readOnlyHint }),
-          ...(typeof ann.idempotentHint === 'boolean' && { idempotent_hint: ann.idempotentHint })
-        };
-      }
-
-      data.tools.push(newTool as unknown as Tool);
+    // Add to system tools catalog with full MCP metadata preserved
+    if (!existingToolObj) {
+      data.tools.push(targetTool as unknown as Tool);
       existingTools.add(toolId);
     }
   }

@@ -7,6 +7,8 @@ import { diagramCommand } from './commands/diagram.js';
 import { riskCommand } from './commands/risk.js';
 import { reportCommand } from './commands/report.js';
 import { importMcpCommand } from './commands/import-mcp.js';
+import { discoverMcpCommand } from './commands/discover-mcp.js';
+import { mcpDiffCommand } from './commands/mcp-diff.js';
 import { driftCommand } from './commands/drift.js';
 import { getPackageVersion } from './core/version.js';
 
@@ -76,8 +78,36 @@ program
   .option('--mcp-id <id>', 'Identifier for the MCP server', 'my-mcp-server')
   .option('--tools-file <file>', 'JSON file containing exposed MCP tools definitions')
   .option('--trust-level <level>', 'Trust zone boundary (internal, partner, external, untrusted)', 'external')
+  .option('--normalize-ids', 'Normalize tool names into safe OAM IDs', false)
   .action((options) => {
     const code = importMcpCommand(options);
+    process.exit(code);
+  });
+
+program
+  .command('discover-mcp')
+  .description('Discover tools from an MCP server and output a snapshot or merge into the model')
+  .option('--mcp-id <id>', 'Identifier for the MCP server')
+  .option('--tools-file <file>', 'Bypass live query and load tools from JSON file')
+  .option('--server <command>', 'Live stdio command to start the MCP server')
+  .option('--arg <arg...>', 'Arguments to pass to the MCP server')
+  .option('--args <args>', 'Legacy quoted argument string to pass to the MCP server')
+  .option('--out <file>', 'OAM YAML file to merge the discovered tools directly into')
+  .option('--snapshot <file>', 'Output path to save the MCP tools snapshot JSON file')
+  .option('--trust-level <level>', 'Trust zone boundary for the MCP server', 'external')
+  .option('--normalize-ids', 'Normalize tool names into safe OAM IDs', false)
+  .action(async (options) => {
+    const code = await discoverMcpCommand(options);
+    process.exit(code);
+  });
+
+program
+  .command('mcp-diff')
+  .description('Compare two MCP snapshots and report the delta')
+  .requiredOption('--before <file>', 'Before snapshot JSON file')
+  .requiredOption('--after <file>', 'After snapshot JSON file')
+  .action((options) => {
+    const code = mcpDiffCommand(options);
     process.exit(code);
   });
 

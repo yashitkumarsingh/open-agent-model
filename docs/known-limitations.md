@@ -12,9 +12,11 @@ SARIF locations are currently based on text scanning. Findings can be mis-locate
 
 A future version should use YAML CST/source-location metadata.
 
-## MCP Import
+## MCP Discovery, Import & Diff
 
-`oam import-mcp` currently imports from a local `--tools-file` containing MCP `tools/list`-style JSON. It preserves source provenance, input_schema, and selected annotations, but it does not yet infer risk, side_effect, auth_identity, required_scopes, or data_classes from MCP metadata. Live MCP server discovery is roadmap work.
+`oam discover-mcp` can query stdio MCP servers, save snapshots, or merge discovered tools directly into an OpenAgentModel file, while `oam mcp-diff` allows comparing snapshot changes. The importer supports tool ID normalisation to resolve namespace collisions. Re-imports automatically refresh existing same-source tool definitions (description, input schema, and annotations) to keep metadata up-to-date.
+
+Live discovery currently targets stdio MCP servers and does not implement remote transports, authentication flows, or multi-page `tools/list` pagination.
 
 ## Runtime Drift
 

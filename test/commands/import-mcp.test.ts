@@ -213,4 +213,86 @@ test('MCP Import Command Test Suite', async (t) => {
     }
   });
 
+  await t.test('9. Normalize option rewrites weird names and preserves original_name', () => {
+    const modelPath = writeTempModel('normalize-weird');
+    const toolsPath = writeTempTools('normalize-weird', [
+      { name: 'github/create issue' },
+      { name: 'tool#name%with$weird@chars!' }
+    ]);
+    try {
+      execSync(
+        `node dist/index.js import-mcp --input ${modelPath} --mcp-id my-mcp --tools-file ${toolsPath} --normalize-ids`,
+        { cwd: ROOT, encoding: 'utf8' }
+      );
+      const content = fs.readFileSync(modelPath, 'utf8');
+
+      assert.match(content, /id: my-mcp\.github-create-issue/, 'should normalize and prefix slash and space');
+      assert.match(content, /id: my-mcp\.tool-name-with-weird-chars/, 'should normalize special symbols');
+
+      assert.match(content, /original_name: github\/create issue/, 'should preserve original tool name');
+      assert.match(content, /original_name: tool#name%with\$weird@chars!/, 'should preserve original tool name');
+    } finally {
+      cleanup(modelPath, toolsPath);
+    }
+  });
+
+  await t.test('10. Normalize option handles duplicate normalized names by appending suffix', () => {
+    const modelPath = writeTempModel('normalize-dupes');
+    const toolsPath = writeTempTools('normalize-dupes', [
+      { name: 'test/tool' },
+      { name: 'test#tool' }
+    ]);
+    try {
+      execSync(
+        `node dist/index.js import-mcp --input ${modelPath} --mcp-id my-mcp --tools-file ${toolsPath} --normalize-ids`,
+        { cwd: ROOT, encoding: 'utf8' }
+      );
+      const content = fs.readFileSync(modelPath, 'utf8');
+
+      assert.match(content, /id: my-mcp\.test-tool/, 'should contain the first tool');
+      assert.match(content, /id: my-mcp\.test-tool-1/, 'should contain the second tool with -1 suffix');
+    } finally {
+      cleanup(modelPath, toolsPath);
+    }
+  });
+
+  await t.test('11. Re-import updates stale MCP metadata for the same original tool', () => {
+    const modelPath = writeTempModel('reimport-updates');
+    const oldToolsPath = writeTempTools('reimport-old', [
+      {
+        name: 'mutable-tool',
+        description: 'Old description',
+        inputSchema: { type: 'object', properties: { value: { type: 'string' } } },
+        annotations: { readOnlyHint: true, destructiveHint: false }
+      }
+    ]);
+    const newToolsPath = writeTempTools('reimport-new', [
+      {
+        name: 'mutable-tool',
+        description: 'New description',
+        inputSchema: { type: 'object', properties: { value: { type: 'number' } } },
+        annotations: { readOnlyHint: false, destructiveHint: true }
+      }
+    ]);
+    try {
+      execSync(
+        `node dist/index.js import-mcp --input ${modelPath} --mcp-id mutable-mcp --tools-file ${oldToolsPath}`,
+        { cwd: ROOT, encoding: 'utf8' }
+      );
+      execSync(
+        `node dist/index.js import-mcp --input ${modelPath} --mcp-id mutable-mcp --tools-file ${newToolsPath}`,
+        { cwd: ROOT, encoding: 'utf8' }
+      );
+
+      const content = fs.readFileSync(modelPath, 'utf8');
+      assert.match(content, /description: New description/, 'description must be refreshed on re-import');
+      assert.match(content, /type: number/, 'input schema must be refreshed on re-import');
+      assert.match(content, /destructive_hint: true/, 'destructive hint must be refreshed on re-import');
+      assert.doesNotMatch(content, /Old description/, 'old description must not remain');
+      assert.doesNotMatch(content, /type: string/, 'old input schema must not remain');
+    } finally {
+      cleanup(modelPath, oldToolsPath, newToolsPath);
+    }
+  });
+
 });
